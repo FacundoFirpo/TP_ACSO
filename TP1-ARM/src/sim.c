@@ -277,14 +277,13 @@ void process_instruction() {
             }
              
             
-            case 0b110100101: // MOVZ
+            case 0b11010010100: // MOVZ Xd, #imm16
             {
                 uint32_t rd = instruction & 0b11111; // Extract bits 0 to 4
                 uint32_t imm16 = (instruction >> 5) & 0b1111111111111111; // Extract bits 5 to 20
-                uint32_t hw = (instruction >> 21) & 0b11; // Extract bits 21 to 22
-                uint32_t shift = hw * 16;
-                uint64_t result = imm16 << shift;
-                NEXT_STATE.REGS[rd] = result;
+
+                NEXT_STATE.REGS[rd] = imm16;
+                
                 break;    
             }
     
