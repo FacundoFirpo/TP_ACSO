@@ -128,7 +128,17 @@ void process_instruction() {
                 break;
             }
 
-            case 0b11010110000: // br
+            case 0b000101: // B (Branch)
+            {
+                int32_t imm26 = (instruction) & 0b11111111111111111111111111; // Extract bits 0 to 25
+                if (imm26 & (1 << 25)) { // Check bit 25 for sign extension
+                    imm26 |= 0xFC000000; // Extend sign by setting bits 26-31 to 1
+                }
+                NEXT_STATE.PC = CURRENT_STATE.PC + imm26;
+                break;
+            }
+
+            case 0b11010110000: // BR 
             {
                 uint32_t rn = (instruction >> 5) & 0b11111; // Extract bits 9 to 5
                 uint64_t target = CURRENT_STATE.REGS[rn];
@@ -136,57 +146,56 @@ void process_instruction() {
                 break;
             }
 
-            // case 0b01010100: // B.Cond (Conditional Branch, opcode corregido)
-            
-            //     int32_t imm19 = (instruction >> 5) & 0b1111111111111111111; // Extraer 19 bits del inmediato
-            //     int32_t imm21 = (imm19 << 2); // Extender a 21 bits
-            //     if (imm19 & (1 << 18)) { // Extender el signo
-            //         imm21 |= 0b11111111111000000000000000000000;
-            //     }
-            //     uint32_t cond = (instruction >> 0) & 0b1111; // Extraer condición correctamente
+            case 0b01010100: // B.Cond (Conditional Branch)
+            {
+                int32_t imm19 = (instruction >> 5) & 0b1111111111111111111; // Extraer 19 bits del inmediato
+                int32_t imm21 = (imm19 << 2); // Extender a 21 bits
+                if (imm19 & (1 << 18)) { // Extender el signo
+                    imm21 |= 0b11111111111000000000000000000000;
+                }
+                uint32_t cond = (instruction >> 0) & 0b1111; // Extraer condición correctamente
 
-            //     int branch = 0;
-            //     switch (cond) {
-            //         case 0b0000: // BEQ (Branch if Equal)
-            //             if (CURRENT_STATE.FLAG_Z) {
-            //                 branch = 1;
-            //             }
-            //             break;
-            //         case 0b0001: // BNE (Branch if Not Equal)
-            //             if (!CURRENT_STATE.FLAG_Z) {
-            //                 branch = 1;
-            //             }
-            //             break;
-            //         case 0b1010: // BGE (Branch if Greater or Equal)
-            //             if (!CURRENT_STATE.FLAG_N) { // FLAG_V is always 0
-            //                 branch = 1;
-            //             }
-            //             break;
-            //         case 0b1011: // BLT (Branch if Less Than)
-            //             if (CURRENT_STATE.FLAG_N) { // FLAG_V is always 0
-            //                 branch = 1;
-            //             }
-            //             break;
-            //         case 0b1100: // BGT (Branch if Greater Than)
-            //             if (!CURRENT_STATE.FLAG_Z && !CURRENT_STATE.FLAG_N) { // FLAG_V is always 0
-            //                 branch = 1;
-            //             }
-            //             break;
-            //         case 0b1101: // BLE (Branch if Less or Equal)
-            //             if (CURRENT_STATE.FLAG_Z || CURRENT_STATE.FLAG_N) { // FLAG_V is always 0
-            //                 branch = 1;
-            //             }
-            //             break;
-            //         default:
-            //             printf("Unknown B.Cond condition: 0b%04b\n", cond);
-            //             break;
-            //     }
+                int branch = 0;
+                switch (cond) {
+                    case 0b0000: // BEQ (Branch if Equal)
+                        if (CURRENT_STATE.FLAG_Z) {
+                            branch = 1;
+                        }
+                        break;
+                    case 0b0001: // BNE (Branch if Not Equal)
+                        if (!CURRENT_STATE.FLAG_Z) {
+                            branch = 1;
+                        }
+                        break;
+                    case 0b1010: // BGE (Branch if Greater or Equal)
+                        if (!CURRENT_STATE.FLAG_N) { // FLAG_V is always 0
+                            branch = 1;
+                        }
+                        break;
+                    case 0b1011: // BLT (Branch if Less Than)
+                        if (CURRENT_STATE.FLAG_N) { // FLAG_V is always 0
+                            branch = 1;
+                        }
+                        break;
+                    case 0b1100: // BGT (Branch if Greater Than)
+                        if (!CURRENT_STATE.FLAG_Z && !CURRENT_STATE.FLAG_N) { // FLAG_V is always 0
+                            branch = 1;
+                        }
+                        break;
+                    case 0b1101: // BLE (Branch if Less or Equal)
+                        if (CURRENT_STATE.FLAG_Z || CURRENT_STATE.FLAG_N) { // FLAG_V is always 0
+                            branch = 1;
+                        }
+                        break;
+                    default:
+                        break;
+                }
                 
-            //     if (branch) {
-            //         NEXT_STATE.PC = CURRENT_STATE.PC + imm21;
-            //     }
-            //     break;
-            
+                if (branch) {
+                    NEXT_STATE.PC = CURRENT_STATE.PC + imm21;
+                }
+                break;
+            }
 
             case 0b1101001101: // LSL (immediate) or LSR (immediate)
             {
@@ -212,22 +221,61 @@ void process_instruction() {
 
 
 
-            // case 0b11111000000: // STUR Xn, [Xn, #imm]
-            // {
-            //     uint32_t Rt = instruction & 0b11111;             // Bits 0-4: Rt (Registro a almacenar)
-            //     uint32_t Rn = (instruction >> 5) & 0b11111;      // Bits 5-9: Rn (Registro base)
-            //     int32_t imm9 = (instruction >> 12) & 0b111111111; // Bits 12-20: desplazamiento inmediato (9 bits)
+            case 0b11111000000: // STUR Xn, [Xn, #imm]
+            {
+                uint32_t Rt = instruction & 0b11111;             // Bits 0-4: Rt (Registro a almacenar)
+                uint32_t Rn = (instruction >> 5) & 0b11111;      // Bits 5-9: Rn (Registro base)
+                int32_t imm9 = (instruction >> 12) & 0b111111111; // Bits 12-20: desplazamiento inmediato (9 bits)
+                // Sign extend imm9 if negative
+                if (imm9 & (1 << 8)) { // Check if bit 8 (sign bit) is 1
+                    imm9 |= 0xFFFFFF00; // Extend sign by setting bits 8-31 to 1
+                }
 
-            //     // Determinar la dirección base
-            //     uint64_t address = CURRENT_STATE.REGS[Rn];
-            //     address += imm9;
+                // Determinar la dirección base
+                uint64_t address = CURRENT_STATE.REGS[Rn] + imm9;
 
-            //     // Guardar el valor de X[Rt] en la memoria
-            //     uint64_t data = CURRENT_STATE.REGS[Rt];
-            //     CURRENT_STATE.MEM[address] = data;
+                // Guardar el valor de X[Rt] en la memoria
+                uint32_t data = CURRENT_STATE.REGS[Rt];
+                mem_write_32(address, data);
 
-            //     break;
-            // }
+                break;
+            }
+
+            case 0b00111000000: // STURB Xn, [Xn, #imm]
+            {
+                uint32_t Rt = instruction & 0b11111;             // Bits 0-4: Rt (Registro a almacenar)
+                uint32_t Rn = (instruction >> 5) & 0b11111;      // Bits 5-9: Rn (Registro base)
+                int32_t imm9 = (instruction >> 12) & 0b111111111; // Bits 12-20: desplazamiento inmediato (9 bits)
+                // Sign extend imm9 if negative
+                if (imm9 & (1 << 8)) { // Check if bit 8 (sign bit) is 1
+                    imm9 |= 0xFFFFFF00; // Extend sign by setting bits 8-31 to 1
+                }
+                // Determinar la dirección base
+                uint64_t address = CURRENT_STATE.REGS[Rn] + imm9;
+                // Guardar el valor de X[Rt] en la memoria
+                uint8_t data = CURRENT_STATE.REGS[Rt];
+                
+                mem_write_32(address, (uint32_t)data);
+                break;
+            }
+
+            case 0b01111000000: // STURH Xn, [Xn, #imm]
+            {
+                uint32_t Rt = instruction & 0b11111;             // Bits 0-4: Rt (Registro a almacenar)
+                uint32_t Rn = (instruction >> 5) & 0b11111;      // Bits 5-9: Rn (Registro base)
+                int32_t imm9 = (instruction >> 12) & 0b111111111; // Bits 12-20: desplazamiento inmediato (9 bits)
+                // Sign extend imm9 if negative
+                if (imm9 & (1 << 8)) { // Check if bit 8 (sign bit) is 1
+                    imm9 |= 0xFFFFFF00; // Extend sign by setting bits 8-31 to 1
+                }
+                // Determinar la dirección base
+                uint64_t address = CURRENT_STATE.REGS[Rn] + imm9;
+                // Guardar el valor de X[Rt] en la memoria
+                uint16_t data = CURRENT_STATE.REGS[Rt];
+                
+                mem_write_32(address, (uint32_t)data);
+                break;
+            }
                 
 
             case 0b1111100001: // LDUR
@@ -310,9 +358,37 @@ void process_instruction() {
                 uint32_t rn = (instruction >> 5) & 0b11111; // Extract bits 5 to 9
                 uint32_t imm12 = (instruction >> 10) & 0b111111111111; // Extract bits 10 to 21
                 uint32_t shift = (instruction >> 22) & 0b11; // Extract bits 22 to 23
+                if (shift == 0b00) {
+                    imm12 = (uint64_t) imm12;
+                } else if (shift == 0b01) {
+                    imm12 = (uint64_t) imm12 << 12;
+                }
+
                 NEXT_STATE.REGS[rd] = CURRENT_STATE.REGS[rn] + imm12;
+
+                // Update flags for ADD operation
+                NEXT_STATE.FLAG_Z = (NEXT_STATE.REGS[rd] == 0);
+                NEXT_STATE.FLAG_N = (NEXT_STATE.REGS[rd] >> 63) & 1;
                 break;
             }
+
+            case 0b10011011000: // MUL Xn, Xm, Xs
+            {
+                uint32_t rd = instruction & 0b11111; // Extract bits 0 to 4
+                uint32_t rn = (instruction >> 5) & 0b11111; // Extract bits 5 to 9
+                uint32_t rm = (instruction >> 16) & 0b11111; // Extract bits 16 to 20
+
+                uint64_t result = 32 + (CURRENT_STATE.REGS[rn] * CURRENT_STATE.REGS[rm]);
+                NEXT_STATE.REGS[rd] = result;
+
+                // Update flags for MUL operation
+                NEXT_STATE.FLAG_Z = (result == 0);
+                NEXT_STATE.FLAG_N = (result >> 63) & 1;
+
+                break;
+            }
+
+
 
 
 
