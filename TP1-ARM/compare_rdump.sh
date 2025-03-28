@@ -34,9 +34,9 @@ if [ ! -f "${ARGS[0]}" ]; then
     exit 1
 fi
 
-### 🔹 Run ref_sim_x86 and save its dumpsim
-echo "Running ref_sim_x86..."
-./ref_sim_x86 "${ARGS[@]}" <<EOF
+### 🔹 Run ref_sim_arm and save its dumpsim
+echo "Running ref_sim_arm..."
+./ref_sim_arm "${ARGS[@]}" <<EOF
 run $CYCLES
 rdump
 q
@@ -44,7 +44,7 @@ EOF
 
 # Ensure dumpsim exists
 if [ ! -f "$SCRIPT_DIR/dumpsim" ]; then
-    echo "❌ No dumpsim file found after running ref_sim_x86"
+    echo "❌ No dumpsim file found after running ref_sim_arm"
     exit 1
 fi
 

@@ -283,10 +283,40 @@ void process_instruction() {
                 uint32_t imm16 = (instruction >> 5) & 0b1111111111111111; // Extract bits 5 to 20
 
                 NEXT_STATE.REGS[rd] = imm16;
-                
+
                 break;    
             }
-    
+
+            case 0b10001011001: // ADD Xd, Xn, Xm (Extended Register)
+            {
+                uint32_t rd = instruction & 0b11111; // Extract bits 0 to 4
+                uint32_t rn = (instruction >> 5) & 0b11111; // Extract bits 5 to 9
+                uint32_t shift = (instruction >> 10) & 0b111; // Extract bits 10 to 12
+                uint32_t rm = (instruction >> 16) & 0b11111; // Extract bits 16 to 20
+                
+                uint32_t sum = CURRENT_STATE.REGS[rm];
+                if (shift != 0) {
+                    sum = CURRENT_STATE.REGS[rm] << shift;
+                }
+
+                NEXT_STATE.REGS[rd] = CURRENT_STATE.REGS[rn] + sum;
+
+                break;
+            }
+
+            case 0b10010001: // ADD Xd, Xn, #imm (Immediate)
+            {
+                uint32_t rd = instruction & 0b11111; // Extract bits 0 to 4
+                uint32_t rn = (instruction >> 5) & 0b11111; // Extract bits 5 to 9
+                uint32_t imm12 = (instruction >> 10) & 0b111111111111; // Extract bits 10 to 21
+                uint32_t shift = (instruction >> 22) & 0b11; // Extract bits 22 to 23
+                NEXT_STATE.REGS[rd] = CURRENT_STATE.REGS[rn] + imm;
+                break;
+            }
+
+
+
+
             default:
                 break;
         }
