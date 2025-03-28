@@ -310,7 +310,7 @@ void process_instruction() {
                 uint32_t rn = (instruction >> 5) & 0b11111; // Extract bits 5 to 9
                 uint32_t imm12 = (instruction >> 10) & 0b111111111111; // Extract bits 10 to 21
                 uint32_t shift = (instruction >> 22) & 0b11; // Extract bits 22 to 23
-                NEXT_STATE.REGS[rd] = CURRENT_STATE.REGS[rn] + imm;
+                NEXT_STATE.REGS[rd] = CURRENT_STATE.REGS[rn] + imm12;
                 break;
             }
 
