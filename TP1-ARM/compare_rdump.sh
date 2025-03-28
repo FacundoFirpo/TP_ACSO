@@ -66,14 +66,27 @@ fi
 file_info=$(file ./sim)
 echo "Binary info: $file_info"
 
+# Get system architecture
+system_arch=$(uname -m)
+echo "System architecture: $system_arch"
+
 # Try running with appropriate method based on architecture
-if [[ "$file_info" == *"ARM"* ]]; then
-    echo "Detected ARM binary, trying to run with appropriate method..."
-    # If you have an ARM emulator installed, use it here
-    # For example: qemu-arm ./sim "../${ARGS[@]}"
-    echo "You may need to install an ARM emulator like qemu-arm to run this binary."
-    echo "Or recompile the sim program for your architecture."
-    exit 1
+if [[ "$file_info" == *"arm64"* ]] && [[ "$system_arch" != "arm64" ]]; then
+    echo "Detected ARM64 binary on non-ARM64 system."
+    
+    # Check if Rosetta 2 is available (for macOS)
+    if [[ "$OSTYPE" == "darwin"* ]] && [ -x "/usr/bin/arch" ]; then
+        echo "Attempting to run with Rosetta 2..."
+        arch -arm64 ./sim "../${ARGS[@]}" <<EOF
+run $CYCLES
+rdump
+q
+EOF
+    else
+        echo "You need to recompile sim for your architecture ($system_arch)."
+        echo "Or run this on an ARM64 system."
+        exit 1
+    fi
 else
     # Try running normally
     ./sim "../${ARGS[@]}" <<EOF
