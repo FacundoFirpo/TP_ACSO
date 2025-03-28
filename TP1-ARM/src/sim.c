@@ -151,13 +151,13 @@ void process_instruction() {
                 // Extract the 19-bit immediate value
                 int32_t imm19 = (instruction >> 5) & 0b1111111111111111111;
                 
-                // Convert to byte offset (multiply by 4)
-                int32_t offset = imm19 << 2;
-                
-                // Sign extend if negative
+                // Sign extend the 19-bit value first
                 if (imm19 & (1 << 18)) { // Check if bit 18 (sign bit of imm19) is set
-                    offset |= 0xFFC00000; // Set bits 22-31 to 1
+                    imm19 |= 0xFFF80000; // Set bits 19-31 to 1 for sign extension
                 }
+                
+                // Then multiply by 4 to get byte offset
+                int32_t offset = imm19 << 2;
                 
                 uint32_t cond = instruction & 0b1111; // Extract condition code (bits 0-3)
                 
