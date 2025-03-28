@@ -148,13 +148,19 @@ void process_instruction() {
 
             case 0b01010100: // B.Cond (Conditional Branch)
             {
-                int32_t imm19 = (instruction >> 5) & 0b1111111111111111111; // Extraer 19 bits del inmediato
-                int32_t imm21 = (imm19 << 2); // Extender a 21 bits
-                if (imm21 & 0x00200000) { // Check if bit 21 is set (sign bit)
-                    imm21 |= 0xFFC00000; // Set bits 22-31 to 1
+                // Extract the 19-bit immediate value
+                int32_t imm19 = (instruction >> 5) & 0b1111111111111111111;
+                
+                // Convert to byte offset (multiply by 4)
+                int32_t offset = imm19 << 2;
+                
+                // Sign extend if negative
+                if (imm19 & (1 << 18)) { // Check if bit 18 (sign bit of imm19) is set
+                    offset |= 0xFFC00000; // Set bits 22-31 to 1
                 }
-                uint32_t cond = (instruction >> 0) & 0b1111; // Extraer condición correctamente
-
+                
+                uint32_t cond = instruction & 0b1111; // Extract condition code (bits 0-3)
+                
                 int branch = 0;
                 switch (cond) {
                     case 0b0000: // BEQ (Branch if Equal)
@@ -192,8 +198,9 @@ void process_instruction() {
                 }
                 
                 if (branch) {
-                    NEXT_STATE.PC = CURRENT_STATE.PC + imm21;
+                    NEXT_STATE.PC = CURRENT_STATE.PC + offset;
                 }
+                // If branch not taken, PC+4 is already set above
                 break;
             }
 
