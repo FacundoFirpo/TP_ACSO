@@ -150,8 +150,8 @@ void process_instruction() {
             {
                 int32_t imm19 = (instruction >> 5) & 0b1111111111111111111; // Extraer 19 bits del inmediato
                 int32_t imm21 = (imm19 << 2); // Extender a 21 bits
-                if (imm19 & (1 << 18)) { // Extender el signo
-                    imm21 |= 0b11111111111000000000000000000000;
+                if (imm21 & 0x00200000) { // Check if bit 21 is set (sign bit)
+                    imm21 |= 0xFFC00000; // Set bits 22-31 to 1
                 }
                 uint32_t cond = (instruction >> 0) & 0b1111; // Extraer condición correctamente
 
