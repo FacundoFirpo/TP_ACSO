@@ -1,6 +1,6 @@
 .text
 // Initialize registers
-MOVZ X1, #data, LSL #0  // X1 = address of data
+MOVZ X1, #data         // X1 = address of data (removed LSL #0)
 
 // Test LDUR
 LDUR X2, [X1, #0]       // Load word from data
@@ -11,7 +11,7 @@ LDURH W4, [X1, #0]      // Load halfword from data
 LDURH W5, [X1, #2]      // Load halfword from data+2
 
 // Test with offset
-MOVZ X6, #data, LSL #0  // X6 = address of data
+MOVZ X6, #data         // X6 = address of data (removed LSL #0)
 LDUR X7, [X6, #16]      // Load word from data+16
 
 // Halt
