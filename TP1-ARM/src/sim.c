@@ -215,11 +215,11 @@ void process_instruction() {
 
                 if (imms==0b11111){ // LSR
                     uint32_t shift = immr & 0b111111; // Calculate the shift amount
-                    uint64_t result = CURRENT_STATE.REGS[rn] >> shift;
+                    result = CURRENT_STATE.REGS[rn] >> shift;
                 } 
                 else { // LSL
                     uint32_t shift = 64 - immr & 0b111111; // Calculate the shift amount
-                    uint64_t result = CURRENT_STATE.REGS[rn] << shift;
+                    result = CURRENT_STATE.REGS[rn] << shift;
                 }
                                 
                 NEXT_STATE.REGS[rd] = result;
