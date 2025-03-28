@@ -53,12 +53,35 @@ cp "$SCRIPT_DIR/dumpsim" "$SCRIPT_DIR/ref_dumpsim"
 
 ### 🔹 Run sim and save its dumpsim
 echo "Running sim..."
+
 cd src
-./sim "../${ARGS[@]}" <<EOF
+
+# Check if sim is executable
+if [ ! -x "./sim" ]; then
+    echo "Making sim executable..."
+    chmod +x ./sim
+fi
+
+# Try to determine the architecture of the binary
+file_info=$(file ./sim)
+echo "Binary info: $file_info"
+
+# Try running with appropriate method based on architecture
+if [[ "$file_info" == *"ARM"* ]]; then
+    echo "Detected ARM binary, trying to run with appropriate method..."
+    # If you have an ARM emulator installed, use it here
+    # For example: qemu-arm ./sim "../${ARGS[@]}"
+    echo "You may need to install an ARM emulator like qemu-arm to run this binary."
+    echo "Or recompile the sim program for your architecture."
+    exit 1
+else
+    # Try running normally
+    ./sim "../${ARGS[@]}" <<EOF
 run $CYCLES
 rdump
 q
 EOF
+fi
 
 # Ensure dumpsim exists
 if [ ! -f "$SCRIPT_DIR/src/dumpsim" ]; then
