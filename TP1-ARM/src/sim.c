@@ -402,7 +402,7 @@ void process_instruction() {
                 break;
             }
 
-            case 0b10110011: // CBZ Xn, #imm
+            case 0b10110100: // CBZ Xn, #imm
             {
                 uint32_t rn = instruction & 0b11111; // Extract bits 0 to 4
                 int32_t imm19 = (instruction >> 5) & 0x7FFFF; // Extract bits 5 to 23 (19-bit immediate)
@@ -420,7 +420,7 @@ void process_instruction() {
                 break;
             }
 
-            case 0b10111011: // CBNZ Xn, #imm
+            case 0b10110101: // CBNZ Xn, #imm
             {
                 uint32_t rn = instruction & 0b11111; // Extraer bits 0 a 4
                 int32_t imm19 = (instruction >> 5) & 0x7FFFF; // Extraer bits 5 a 23 (19-bit immediate)
