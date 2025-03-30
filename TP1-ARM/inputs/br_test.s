@@ -4,7 +4,7 @@ MOVZ X1, #10     // Initialize X1 with 10
 MOVZ X2, #20     // Initialize X2 with 20
 
 // Branch to the address in X10
-BR target:
+BR target
 
 // This code should be skipped
 MOVZ X2, #20     // This should be skipped
