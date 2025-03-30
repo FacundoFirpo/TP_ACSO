@@ -382,14 +382,14 @@ void process_instruction() {
                 uint32_t rd = instruction & 0b11111; // Extract bits 0 to 4
                 uint32_t rn = (instruction >> 5) & 0b11111; // Extract bits 5 to 9
                 uint32_t rm = (instruction >> 16) & 0b11111; // Extract bits 16 to 20
-
-                uint64_t result = 32 + (CURRENT_STATE.REGS[rn] * CURRENT_STATE.REGS[rm]);
+            
+                uint64_t result = CURRENT_STATE.REGS[rn] * CURRENT_STATE.REGS[rm]; // Eliminar la suma de 32
                 NEXT_STATE.REGS[rd] = result;
-
+            
                 // Update flags for MUL operation
                 NEXT_STATE.FLAG_Z = (result == 0);
                 NEXT_STATE.FLAG_N = (result >> 63) & 1;
-
+            
                 break;
             }
 
