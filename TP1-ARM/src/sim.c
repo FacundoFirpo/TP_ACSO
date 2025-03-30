@@ -130,11 +130,16 @@ void process_instruction() {
 
             case 0b000101: // B (Branch)
             {
-                int32_t imm26 = (instruction) & 0b11111111111111111111111111; // Extract bits 0 to 25
-                if (imm26 & (1 << 25)) { // Check bit 25 for sign extension
-                    imm26 |= 0xFC000000; // Extend sign by setting bits 26-31 to 1
+                int32_t imm26 = instruction & 0x03FFFFFF; // Extraer bits 0-25 (26-bit immediate)
+            
+                // Extender el signo si el bit 25 está en 1
+                if (imm26 & (1 << 25)) {
+                    imm26 |= 0xFC000000; // Llenar con 1s los bits superiores
                 }
-                NEXT_STATE.PC = CURRENT_STATE.PC + imm26;
+            
+                int32_t offset = imm26 << 2; // Multiplicar por 4
+            
+                NEXT_STATE.PC = CURRENT_STATE.PC + offset;
                 break;
             }
 
