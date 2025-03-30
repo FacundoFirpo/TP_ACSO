@@ -356,9 +356,6 @@ void process_instruction() {
                 // Solo LSL es válido y los valores permitidos son 0 y 12
                 if (shift == 1) { // LSL #12
                     sum = sum << 12;
-                } else if (shift != 0) {
-                    fprintf(stderr, "Error: ADD solo admite LSL #0 o LSL #12\n");
-                    exit(1);
                 }
             
                 NEXT_STATE.REGS[rd] = CURRENT_STATE.REGS[rn] + sum;
