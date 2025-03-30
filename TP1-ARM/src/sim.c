@@ -396,25 +396,36 @@ void process_instruction() {
             case 0b10110011: // CBZ Xn, #imm
             {
                 uint32_t rn = instruction & 0b11111; // Extract bits 0 to 4
-                uint32_t imm19 = (instruction >> 5) & 0b1111111111111111111; // Extract bits 5 to 23
-
-                uint32_t offset = imm19 << 2;
+                int32_t imm19 = (instruction >> 5) & 0x7FFFF; // Extract bits 5 to 23 (19-bit immediate)
+            
+                // Extender el signo manualmente si el bit 18 está en 1
+                if (imm19 & (1 << 18)) {
+                    imm19 |= 0xFFF80000; // Extender con 1s los bits superiores
+                }
+            
+                int32_t offset = imm19 << 2; // Multiplicar por 4
+            
                 if (CURRENT_STATE.REGS[rn] == 0) {
                     NEXT_STATE.PC = CURRENT_STATE.PC + offset;
                 }
-                // If branch not taken, PC+4 is already set above
                 break;
             }
 
             case 0b10111011: // CBNZ Xn, #imm
             {
-                uint32_t rn = instruction & 0b11111; // Extract bits 0 to 4
-                uint32_t imm19 = (instruction >> 5) & 0b1111111111111111111; // Extract bits 5 to 23
-                uint32_t offset = imm19 << 2;
+                uint32_t rn = instruction & 0b11111; // Extraer bits 0 a 4
+                int32_t imm19 = (instruction >> 5) & 0x7FFFF; // Extraer bits 5 a 23 (19-bit immediate)
+            
+                // Extender el signo si el bit 18 está en 1
+                if (imm19 & (1 << 18)) {
+                    imm19 |= 0xFFF80000; // Llenar con 1s los bits superiores
+                }
+            
+                int32_t offset = imm19 << 2; // Multiplicar por 4
+            
                 if (CURRENT_STATE.REGS[rn] != 0) {
                     NEXT_STATE.PC = CURRENT_STATE.PC + offset;
                 }
-                // If branch not taken, PC+4 is already set above
                 break;
             }
 
