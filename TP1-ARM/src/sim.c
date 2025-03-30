@@ -349,13 +349,13 @@ void process_instruction() {
             {
                 uint32_t rd = instruction & 0b11111; // Bits 0-4
                 uint32_t rn = (instruction >> 5) & 0b11111; // Bits 5-9
-                uint32_t rm = (instruction >> 16) & 0b11111; // Bits 16-20
                 uint32_t shift = (instruction >> 10) & 0b111; // Bits 10-12
-                uint32_t sum = CURRENT_STATE.REGS[rm];
+                uint32_t rm = (instruction >> 16) & 0b11111; // Bits 16-20
+                uint64_t sum = CURRENT_STATE.REGS[rm];
             
                 // Solo LSL es válido y los valores permitidos son 0 y 12
-                if (shift == 1) { // LSL #12
-                    sum = sum << 12;
+                if (shift != 0) { // LSL #12
+                    sum = sum << shift;
                 }
             
                 NEXT_STATE.REGS[rd] = CURRENT_STATE.REGS[rn] + sum;
