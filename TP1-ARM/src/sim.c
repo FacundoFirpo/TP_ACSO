@@ -345,7 +345,8 @@ void process_instruction() {
                 break;    
             }
 
-            case 0b10001011001: // ADD Xd, Xn, Xm (Extended Register)
+            // 10001011000
+            case 0b10001011000: // ADD Xd, Xn, Xm (Extended Register)
             {
                 uint32_t rd = instruction & 0b11111; // Bits 0-4
                 uint32_t rn = (instruction >> 5) & 0b11111; // Bits 5-9
@@ -353,8 +354,7 @@ void process_instruction() {
                 uint32_t rm = (instruction >> 16) & 0b11111; // Bits 16-20
                 uint64_t sum = CURRENT_STATE.REGS[rm];
             
-                // Solo LSL es válido y los valores permitidos son 0 y 12
-                if (shift != 0) { // LSL #12
+                if (shift != 0) {
                     sum = sum << shift;
                 }
             
