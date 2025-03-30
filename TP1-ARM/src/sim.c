@@ -345,7 +345,6 @@ void process_instruction() {
                 break;    
             }
 
-            // 10001011000
             case 0b10001011000: // ADD Xd, Xn, Xm (Extended Register)
             {
                 uint32_t rd = instruction & 0b11111; // Bits 0-4
@@ -354,8 +353,8 @@ void process_instruction() {
                 uint32_t rm = (instruction >> 16) & 0b11111; // Bits 16-20
                 uint64_t sum = CURRENT_STATE.REGS[rm];
             
-                if (shift != 0) {
-                    sum = sum << shift;
+                if (shift == 1) {
+                    sum = sum << 12;
                 }
             
                 NEXT_STATE.REGS[rd] = CURRENT_STATE.REGS[rn] + sum;
