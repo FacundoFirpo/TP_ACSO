@@ -347,20 +347,24 @@ void process_instruction() {
 
             case 0b10001011001: // ADD Xd, Xn, Xm (Extended Register)
             {
-                uint32_t rd = instruction & 0b11111; // Extract bits 0 to 4
-                uint32_t rn = (instruction >> 5) & 0b11111; // Extract bits 5 to 9
-                uint32_t shift = (instruction >> 10) & 0b111; // Extract bits 10 to 12
-                uint32_t rm = (instruction >> 16) & 0b11111; // Extract bits 16 to 20
-                
+                uint32_t rd = instruction & 0b11111; // Bits 0-4
+                uint32_t rn = (instruction >> 5) & 0b11111; // Bits 5-9
+                uint32_t rm = (instruction >> 16) & 0b11111; // Bits 16-20
+                uint32_t shift = (instruction >> 10) & 0b111; // Bits 10-12
                 uint32_t sum = CURRENT_STATE.REGS[rm];
-                if (shift != 0) {
-                    sum = CURRENT_STATE.REGS[rm] << shift;
+            
+                // Solo LSL es válido y los valores permitidos son 0 y 12
+                if (shift == 1) { // LSL #12
+                    sum = sum << 12;
+                } else if (shift != 0) {
+                    fprintf(stderr, "Error: ADD solo admite LSL #0 o LSL #12\n");
+                    exit(1);
                 }
-
+            
                 NEXT_STATE.REGS[rd] = CURRENT_STATE.REGS[rn] + sum;
-
                 break;
             }
+            
 
             case 0b10010001: // ADD Xd, Xn, #imm (Immediate)
             {
