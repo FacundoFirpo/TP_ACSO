@@ -412,9 +412,6 @@ void process_instruction() {
 
                 NEXT_STATE.REGS[rd] = CURRENT_STATE.REGS[rn] + imm12;
 
-                // Update flags for ADD operation
-                NEXT_STATE.FLAG_Z = (NEXT_STATE.REGS[rd] == 0);
-                NEXT_STATE.FLAG_N = (NEXT_STATE.REGS[rd] >> 63) & 1;
                 break;
             }
 
@@ -427,9 +424,6 @@ void process_instruction() {
                 uint64_t result = CURRENT_STATE.REGS[rn] * CURRENT_STATE.REGS[rm]; // Eliminar la suma de 32
                 NEXT_STATE.REGS[rd] = result;
             
-                // Update flags for MUL operation
-                NEXT_STATE.FLAG_Z = (result == 0);
-                NEXT_STATE.FLAG_N = (result >> 63) & 1;
             
                 break;
             }
