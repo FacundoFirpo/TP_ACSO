@@ -241,6 +241,9 @@ void process_instruction() {
                     imm9 |= 0xFFFFFF00; // Extend sign by setting bits 8-31 to 1
                 }
 
+                // Determinar la dirección base
+                uint64_t address = CURRENT_STATE.REGS[Rn] + imm9;
+
                 // Split 64-bit value into two 32-bit words
                 uint32_t lower_word = CURRENT_STATE.REGS[Rt] & 0xFFFFFFFF;
                 uint32_t upper_word = (CURRENT_STATE.REGS[Rt] >> 32) & 0xFFFFFFFF;
