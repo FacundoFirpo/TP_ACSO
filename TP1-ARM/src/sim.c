@@ -46,9 +46,9 @@ void process_instruction() {
                 uint32_t Rn = (instruction >> 5) & 0b11111;
                 uint32_t Rm = (instruction >> 16) & 0b11111;
                 int64_t result = (int64_t)CURRENT_STATE.REGS[Rn] + (int64_t)CURRENT_STATE.REGS[Rm];
-                NEXT_STATE.REGS[Rd] = (uint64_t) result;
+                NEXT_STATE.REGS[Rd] = (uint64_t)result;
                 NEXT_STATE.FLAG_Z = (result == 0);
-                NEXT_STATE.FLAG_N = ((result >> 63) & 1) == 1;
+                NEXT_STATE.FLAG_N = (result < 0);
                 break;
             }
 
