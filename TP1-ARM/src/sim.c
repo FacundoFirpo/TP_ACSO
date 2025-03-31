@@ -240,17 +240,31 @@ void process_instruction() {
                 if (imm9 & (1 << 8)) { // Check if bit 8 (sign bit) is 1
                     imm9 |= 0xFFFFFF00; // Extend sign by setting bits 8-31 to 1
                 }
-
                 // Determinar la dirección base
                 uint64_t address = CURRENT_STATE.REGS[Rn] + imm9;
-
-                // Guardar el valor de X[Rt] en la memoria
-                uint32_t data = CURRENT_STATE.REGS[Rt];
-                mem_write_32(address, data);
-
+                
+                // Read existing memory value
+                uint32_t existing_data = mem_read_32(address & ~0x3); // Align to word boundary
+                
+                // Calculate byte position within the word (0, 1, 2, or 3)
+                int byte_pos = address & 0x3;
+                
+                // Extract the byte from Rt
+                uint8_t byte_to_store = CURRENT_STATE.REGS[Rt] & 0xFF;
+                
+                // Create a mask and position the byte
+                uint32_t byte_mask = 0xFF << (byte_pos * 8);
+                uint32_t positioned_byte = byte_to_store << (byte_pos * 8);
+                
+                // Update only the specific byte in the word
+                uint32_t new_data = (existing_data & ~byte_mask) | positioned_byte;
+                
+                // Write back to memory
+                mem_write_32(address & ~0x3, new_data);
+                
                 break;
             }
-
+            
             case 0b00111000000: // STURB Xn, [Xn, #imm]
             {
                 uint32_t Rt = instruction & 0b11111;             // Bits 0-4: Rt (Registro a almacenar)
@@ -264,62 +278,80 @@ void process_instruction() {
                 uint64_t address = CURRENT_STATE.REGS[Rn] + imm9;
                 
                 // Read existing memory value
-                uint32_t existing_data = mem_read_32(address);
+                uint32_t existing_data = mem_read_32(address & ~0x3); // Align to word boundary
                 
-                // Extract the byte from Rt and preserve the other bytes in memory
+                // Calculate byte position within the word (0, 1, 2, or 3)
+                int byte_pos = address & 0x3;
+                
+                // Extract the byte from Rt
                 uint8_t byte_to_store = CURRENT_STATE.REGS[Rt] & 0xFF;
                 
-                // Update only the lowest byte in the word
-                uint32_t new_data = (existing_data & 0xFFFFFF00) | byte_to_store;
+                // Create a mask and position the byte
+                uint32_t byte_mask = 0xFF << (byte_pos * 8);
+                uint32_t positioned_byte = byte_to_store << (byte_pos * 8);
+                
+                // Update only the specific byte in the word
+                uint32_t new_data = (existing_data & ~byte_mask) | positioned_byte;
                 
                 // Write back to memory
-                mem_write_32(address, new_data);
+                mem_write_32(address & ~0x3, new_data);
                 
                 break;
             }
-
-            case 0b01111000000: // STURH Xn, [Xn, #imm]
-            {
-                uint32_t Rt = instruction & 0b11111;             // Bits 0-4: Rt (Registro a almacenar)
-                uint32_t Rn = (instruction >> 5) & 0b11111;      // Bits 5-9: Rn (Registro base)
-                int32_t imm9 = (instruction >> 12) & 0b111111111; // Bits 12-20: desplazamiento inmediato (9 bits)
-                // Sign extend imm9 if negative
-                if (imm9 & (1 << 8)) { // Check if bit 8 (sign bit) is 1
-                    imm9 |= 0xFFFFFF00; // Extend sign by setting bits 8-31 to 1
-                }
-                // Determinar la dirección base
-                uint64_t address = CURRENT_STATE.REGS[Rn] + imm9;
-                
-                // Read existing memory value
-                uint32_t existing_data = mem_read_32(address);
-                
-                // Extract the halfword from Rt and preserve the other halfword in memory
-                uint16_t halfword_to_store = CURRENT_STATE.REGS[Rt] & 0xFFFF;
-                
-                // Update only the lowest halfword in the word
-                uint32_t new_data = (existing_data & 0xFFFF0000) | halfword_to_store;
-                
-                // Write back to memory
-                mem_write_32(address, new_data);
-                
-                break;
-            }
-
-            case 0b1111100001: // LDUR
+            
+            case 0b0011100001: // LDURB
             {
                 uint32_t rt = instruction & 0b11111; // Extract bits 0 to 4
                 uint32_t rn = (instruction >> 5) & 0b11111; // Extract bits 5 to 9
                 int32_t imm9 = (instruction >> 12) & 0b111111111; // Extract bits 12 to 20
-
+                
                 // Sign extend imm9 if negative
                 if (imm9 & (1 << 8)) { // Check if bit 8 (sign bit) is 1
                     imm9 |= 0xFFFFFF00; // Extend sign by setting bits 8-31 to 1
                 }
                 
                 uint64_t address = CURRENT_STATE.REGS[rn] + imm9;
-
-                NEXT_STATE.REGS[rt] = mem_read_32(address);
-
+                
+                // Read the word containing the byte
+                uint32_t data = mem_read_32(address & ~0x3); // Align to word boundary
+                
+                // Calculate byte position within the word (0, 1, 2, or 3)
+                int byte_pos = address & 0x3;
+                
+                // Extract the specific byte
+                int8_t byte = (data >> (byte_pos * 8)) & 0xFF;
+                
+                // Sign extend to 64 bits
+                NEXT_STATE.REGS[rt] = (uint64_t)(int64_t)byte;
+                
+                break;
+            }
+            
+            case 0b0111100001: // LDURH
+            {
+                uint32_t rt = instruction & 0b11111; // Extract bits 0 to 4
+                uint32_t rn = (instruction >> 5) & 0b11111; // Extract bits 5 to 9
+                int32_t imm9 = (instruction >> 12) & 0b111111111; // Extract bits 12 to 20
+                
+                // Sign extend imm9 if negative
+                if (imm9 & (1 << 8)) { // Check if bit 8 (sign bit) is 1
+                    imm9 |= 0xFFFFFF00; // Extend sign by setting bits 8-31 to 1
+                }
+                
+                uint64_t address = CURRENT_STATE.REGS[rn] + imm9;
+                
+                // Read the word containing the halfword
+                uint32_t data = mem_read_32(address & ~0x3); // Align to word boundary
+                
+                // Calculate halfword position within the word (0 or 2)
+                int halfword_pos = (address & 0x3) / 2;
+                
+                // Extract the specific halfword
+                int16_t halfword = (data >> (halfword_pos * 16)) & 0xFFFF;
+                
+                // Sign extend to 64 bits
+                NEXT_STATE.REGS[rt] = (uint64_t)(int64_t)halfword;
+                
                 break;
             }
 
