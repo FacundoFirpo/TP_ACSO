@@ -60,7 +60,7 @@ void process_instruction() {
                 int64_t result = (int64_t)CURRENT_STATE.REGS[Rn] + imm;
                 NEXT_STATE.REGS[Rd] = (uint64_t)result;
                 NEXT_STATE.FLAG_Z = (result == 0);
-                NEXT_STATE.FLAG_N = ((result >> 63) & 1) == 1;
+                NEXT_STATE.FLAG_N = (result < 0);
                 break;
             }
 
