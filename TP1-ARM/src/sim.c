@@ -275,7 +275,6 @@ void process_instruction() {
                 // Write back to memory
                 mem_write_32(address, new_data);
                 
-                printf("STURB: Storing byte 0x%02x to address 0x%lx\n", byte_to_store, address);
                 break;
             }
 
@@ -303,7 +302,6 @@ void process_instruction() {
                 // Write back to memory
                 mem_write_32(address, new_data);
                 
-                printf("STURH: Storing halfword 0x%04x to address 0x%lx\n", halfword_to_store, address);
                 break;
             }
 
