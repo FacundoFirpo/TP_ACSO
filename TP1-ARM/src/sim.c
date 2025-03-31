@@ -241,12 +241,13 @@ void process_instruction() {
                     imm9 |= 0xFFFFFF00; // Extend sign by setting bits 8-31 to 1
                 }
 
-                // Determinar la dirección base
-                uint64_t address = CURRENT_STATE.REGS[Rn] + imm9;
-
-                // Guardar el valor de X[Rt] en la memoria
-                uint32_t data = CURRENT_STATE.REGS[Rt];
-                mem_write_32(address, data);
+                // Split 64-bit value into two 32-bit words
+                uint32_t lower_word = CURRENT_STATE.REGS[Rt] & 0xFFFFFFFF;
+                uint32_t upper_word = (CURRENT_STATE.REGS[Rt] >> 32) & 0xFFFFFFFF;
+                
+                // Store both words in memory
+                mem_write_32(address, lower_word);
+                mem_write_32(address + 4, upper_word);
 
                 break;
             }
@@ -318,7 +319,14 @@ void process_instruction() {
                 
                 uint64_t address = CURRENT_STATE.REGS[rn] + imm9;
 
-                NEXT_STATE.REGS[rt] = mem_read_32(address);
+                // Read 64-bit value (two 32-bit words)
+                uint64_t lower_word = mem_read_32(address);
+                uint64_t upper_word = mem_read_32(address + 4);
+                
+                // Combine into 64-bit value
+                uint64_t value = lower_word | (upper_word << 32);
+                
+                NEXT_STATE.REGS[rt] = value;
 
                 break;
             }
@@ -332,7 +340,7 @@ void process_instruction() {
                 uint64_t address = CURRENT_STATE.REGS[rn] + imm9;
 
                 uint32_t data = mem_read_32(address);
-                uint16_t halfword = data & 0xFFFF; // Extract the lowest 16 bits
+                uint64_t halfword = data & 0xFFFF; // Extract the lowest 16 bits
                 NEXT_STATE.REGS[rt] = halfword;
                 
                 break;
@@ -353,7 +361,7 @@ void process_instruction() {
                 uint64_t address = CURRENT_STATE.REGS[rn] + imm9;
 
                 uint32_t data = mem_read_32(address);
-                uint8_t byte = data & 0xFF; // Extract the lowest 8 bits
+                uint64_t byte = data & 0xFF; // Extract the lowest 8 bits
                 NEXT_STATE.REGS[rt] = byte;
                 
                 break;
