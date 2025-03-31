@@ -262,10 +262,20 @@ void process_instruction() {
                 }
                 // Determinar la dirección base
                 uint64_t address = CURRENT_STATE.REGS[Rn] + imm9;
-                // Guardar el valor de X[Rt] en la memoria
-                uint8_t data = CURRENT_STATE.REGS[Rt];
                 
-                mem_write_32(address, (uint32_t)data);
+                // Read existing memory value
+                uint32_t existing_data = mem_read_32(address);
+                
+                // Extract the byte from Rt and preserve the other bytes in memory
+                uint8_t byte_to_store = CURRENT_STATE.REGS[Rt] & 0xFF;
+                
+                // Update only the lowest byte in the word
+                uint32_t new_data = (existing_data & 0xFFFFFF00) | byte_to_store;
+                
+                // Write back to memory
+                mem_write_32(address, new_data);
+                
+                printf("STURB: Storing byte 0x%02x to address 0x%lx\n", byte_to_store, address);
                 break;
             }
 
@@ -280,15 +290,24 @@ void process_instruction() {
                 }
                 // Determinar la dirección base
                 uint64_t address = CURRENT_STATE.REGS[Rn] + imm9;
-                // Guardar el valor de X[Rt] en la memoria
-                uint16_t data = CURRENT_STATE.REGS[Rt];
                 
-                mem_write_32(address, (uint32_t)data);
+                // Read existing memory value
+                uint32_t existing_data = mem_read_32(address);
+                
+                // Extract the halfword from Rt and preserve the other halfword in memory
+                uint16_t halfword_to_store = CURRENT_STATE.REGS[Rt] & 0xFFFF;
+                
+                // Update only the lowest halfword in the word
+                uint32_t new_data = (existing_data & 0xFFFF0000) | halfword_to_store;
+                
+                // Write back to memory
+                mem_write_32(address, new_data);
+                
+                printf("STURH: Storing halfword 0x%04x to address 0x%lx\n", halfword_to_store, address);
                 break;
             }
-                
 
-            case 0b1111100001: // LDUR
+            case 0b0111100001: // LDUR
             {
                 uint32_t rt = instruction & 0b11111; // Extract bits 0 to 4
                 uint32_t rn = (instruction >> 5) & 0b11111; // Extract bits 5 to 9
