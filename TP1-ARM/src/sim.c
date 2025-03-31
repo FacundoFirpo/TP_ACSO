@@ -310,11 +310,16 @@ void process_instruction() {
                 uint32_t rt = instruction & 0b11111; // Extract bits 0 to 4
                 uint32_t rn = (instruction >> 5) & 0b11111; // Extract bits 5 to 9
                 int32_t imm9 = (instruction >> 12) & 0b111111111; // Extract bits 12 to 20
+
+                // Sign extend imm9 if negative
+                if (imm9 & (1 << 8)) { // Check if bit 8 (sign bit) is 1
+                    imm9 |= 0xFFFFFF00; // Extend sign by setting bits 8-31 to 1
+                }
                 
-                uint64_t address = CURRENT_STATE.REGS[rn];
-                address += imm9;
+                uint64_t address = CURRENT_STATE.REGS[rn] + imm9;
 
                 NEXT_STATE.REGS[rt] = mem_read_32(address);
+
                 break;
             }
 
@@ -324,12 +329,11 @@ void process_instruction() {
                 uint32_t rn = (instruction >> 5) & 0b11111; // Extract bits 5 to 9
                 int32_t imm9 = (instruction >> 12) & 0b111111111; // Extract bits 12 to 20
 
-                uint64_t address = CURRENT_STATE.REGS[rn];
-                address += imm9;
+                uint64_t address = CURRENT_STATE.REGS[rn] + imm9;
 
                 uint32_t data = mem_read_32(address);
-                data = (data >> 16) & 0xFFFF; // Extraer los 16 bits superiores
-                NEXT_STATE.REGS[rt] = data;
+                uint16_t halfword = data & 0xFFFF; // Extract the lowest 16 bits
+                NEXT_STATE.REGS[rt] = halfword;
                 
                 break;
             }
@@ -341,12 +345,16 @@ void process_instruction() {
                 uint32_t rn = (instruction >> 5) & 0b11111; // Extract bits 5 to 9
                 int32_t imm9 = (instruction >> 12) & 0b111111111; // Extract bits 12 to 20
                 
-                uint64_t address = CURRENT_STATE.REGS[rn];
-                address += imm9;
+                // Sign extend imm9 if negative
+                if (imm9 & (1 << 8)) { // Check if bit 8 (sign bit) is 1
+                    imm9 |= 0xFFFFFF00; // Extend sign by setting bits 8-31 to 1
+                }
+                
+                uint64_t address = CURRENT_STATE.REGS[rn] + imm9;
 
                 uint32_t data = mem_read_32(address);
-                data = (data >> 24) & 0xFF; // Extraer el byte superior
-                NEXT_STATE.REGS[rt] = data;
+                uint8_t byte = data & 0xFF; // Extract the lowest 8 bits
+                NEXT_STATE.REGS[rt] = byte;
                 
                 break;
             }
