@@ -448,10 +448,6 @@ void process_instruction() {
                 uint64_t result = CURRENT_STATE.REGS[rn] * CURRENT_STATE.REGS[rm]; // Eliminar la suma de 32
                 NEXT_STATE.REGS[rd] = result;
             
-                // Update flags for MUL operation
-                NEXT_STATE.FLAG_Z = (result == 0);
-                NEXT_STATE.FLAG_N = (result >> 63) & 1;
-            
                 break;
             }
 
