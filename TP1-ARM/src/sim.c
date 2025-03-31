@@ -305,7 +305,7 @@ void process_instruction() {
                 break;
             }
 
-            case 0b0111100001: // LDUR
+            case 0b1111100001: // LDUR
             {
                 uint32_t rt = instruction & 0b11111; // Extract bits 0 to 4
                 uint32_t rn = (instruction >> 5) & 0b11111; // Extract bits 5 to 9
