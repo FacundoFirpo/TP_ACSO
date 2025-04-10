@@ -31,4 +31,6 @@ def solve_phase_2():
                         print(f"Combination found: {num1}, {num2}, {num3}")
                         return
 
+    print("No combination found.")
+
 solve_phase_2()
