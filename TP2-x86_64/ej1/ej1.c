@@ -54,9 +54,9 @@ char* string_proc_list_concat(string_proc_list* list, uint8_t type, char* hash) 
     string_proc_node* current_node = list->first;
     while (current_node != NULL) {
         if (current_node->type == type) {
-            char* temp = str_concat(result, current_node->hash); // Concatenate
-            free(result); // Free the old result
-            result = temp; // Update result
+            char* temp = str_concat(result, current_node->hash);
+            free(result);
+            result = temp;
         }
         current_node = current_node->next;
     }
