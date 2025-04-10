@@ -40,21 +40,27 @@ void string_proc_list_add_node(string_proc_list* list, uint8_t type, char* hash)
     }
 }
 
-char* string_proc_list_concat(string_proc_list* list, uint8_t type , char* hash){
-    string_proc_node* node = string_proc_node_create(type, hash);
-    if(node == NULL){
-        fprintf(stderr, "Error: No se pudo crear el nodo\n");
+char* string_proc_list_concat(string_proc_list* list, uint8_t type, char* hash) {
+    if (list == NULL || hash == NULL) {
         return NULL;
     }
-    if(list->first == NULL){
-        list->first = node;
-        list->last  = node;
-    } else {
-        list->last->next = node;
-        node->previous   = list->last;
-        list->last      = node;
+
+    char* result = strdup(hash); // Start with the given hash
+    if (result == NULL) {
+        fprintf(stderr, "Error: No se pudo asignar memoria para el resultado\n");
+        return NULL;
     }
-    char* result = str_concat(list->first->hash, hash);
+
+    string_proc_node* current_node = list->first;
+    while (current_node != NULL) {
+        if (current_node->type == type) {
+            char* temp = str_concat(result, current_node->hash); // Concatenate
+            free(result); // Free the old result
+            result = temp; // Update result
+        }
+        current_node = current_node->next;
+    }
+
     return result;
 }
 
