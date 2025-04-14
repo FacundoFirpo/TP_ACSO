@@ -49,51 +49,28 @@ string_proc_list_create_asm:
 string_proc_node_create_asm:
     push rbp
     mov rbp, rsp
-    push rbx
 
-    ; Save type in a safe register
-    mov rbx, rdi
+    mov rdx, rsi      ; guardamos hash en rdx porque lo vamos a necesitar luego
+    mov rsi, rdi      ; guardamos type en rsi
 
-    ; Call strdup to create a copy of the hash string
-    mov rdi, rsi
-    extern strdup
-    call strdup
-    test rax, rax
-    je .malloc_fail
-    
-    ; Save the duplicated string
-    mov rsi, rax
-
-    ; Now allocate memory for the node
     mov rdi, 32       ; tamaño del nodo: 4 punteros (8*4 = 32 bytes)
     call malloc
     test rax, rax
-    je .strdup_fail
+    je .malloc_fail
 
     ; rax = puntero al nodo
     ; Inicializar campos
     mov qword [rax], NULL         ; next
     mov qword [rax + 8], NULL     ; previous
-    mov byte  [rax + 16], bl      ; type (rbx -> bl)
-    mov qword [rax + 24], rsi     ; hash (duplicated string)
+    mov byte  [rax + 16], sil     ; type (rsi -> sil)
+    mov qword [rax + 24], rdx     ; hash
 
     ; devolver nodo en rax
-    pop rbx
-    pop rbp
-    ret
-
-.strdup_fail:
-    ; Free the duplicated string if node allocation fails
-    mov rdi, rsi
-    call free
-    mov rax, NULL
-    pop rbx
     pop rbp
     ret
 
 .malloc_fail:
     mov rax, NULL
-    pop rbx
     pop rbp
     ret
 
@@ -146,29 +123,27 @@ string_proc_list_add_node_asm:
 string_proc_list_concat_asm:
     push rbp
     mov rbp, rsp
-    sub rsp, 16               ; Reserve stack space for local variables
-    push rbx                  ; vamos a usar rbx para current_node
-    push r12                  ; result
-    push r13                  ; list pointer
-    push r14                  ; type
-    push r15                  ; hash pointer
+    push rbx                ; vamos a usar rbx para current_node
+    push r12                ; result
+    push r13                ; list pointer
+    push r14                ; type
 
     ; Validaciones
     test rdi, rdi
-    jz .return_null
+    je .return_null
     test rdx, rdx
-    jz .return_null
+    je .return_null
 
     ; Save parameters in non-volatile registers
     mov r13, rdi              ; Save list pointer in r13
     mov r14, rsi              ; Save type in r14
-    mov r15, rdx              ; Save hash pointer in r15
 
     ; strdup(hash)
-    mov rdi, r15
+    mov rdi, rdx
+    extern strdup
     call strdup
     test rax, rax
-    jz .return_null
+    je .return_null
     mov r12, rax              ; r12 = result (duplicated hash)
 
     ; recorrer lista
@@ -176,7 +151,7 @@ string_proc_list_concat_asm:
 
 .loop:
     test rbx, rbx
-    jz .done
+    je .done
 
     ; Check if node type matches requested type
     movzx eax, byte [rbx + 16]  ; node->type (zero-extend to avoid garbage)
@@ -186,13 +161,13 @@ string_proc_list_concat_asm:
     ; Get node hash
     mov rsi, [rbx + 24]       ; node->hash
     test rsi, rsi             ; check if hash is NULL
-    jz .next                  ; skip if NULL
+    je .next                  ; skip if NULL
 
     ; Concatenate result + node->hash
     mov rdi, r12              ; result
     call str_concat
     test rax, rax             ; Check if str_concat returned NULL
-    jz .next                  ; Skip if NULL
+    je .next                  ; Skip if NULL
     
     ; Free old result and update with new concatenated string
     mov rdi, r12
@@ -205,17 +180,18 @@ string_proc_list_concat_asm:
 
 .done:
     mov rax, r12              ; Return result
-    jmp .cleanup
-
-.return_null:
-    mov rax, NULL
-
-.cleanup:
-    pop r15
     pop r14
     pop r13
     pop r12
     pop rbx
-    add rsp, 16
+    pop rbp
+    ret
+
+.return_null:
+    mov rax, NULL
+    pop r14
+    pop r13
+    pop r12
+    pop rbx
     pop rbp
     ret
