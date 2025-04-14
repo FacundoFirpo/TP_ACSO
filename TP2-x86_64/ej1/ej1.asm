@@ -49,28 +49,51 @@ string_proc_list_create_asm:
 string_proc_node_create_asm:
     push rbp
     mov rbp, rsp
+    push rbx
 
-    mov rdx, rsi      ; guardamos hash en rdx porque lo vamos a necesitar luego
-    mov rsi, rdi      ; guardamos type en rsi
+    ; Save type in a safe register
+    mov rbx, rdi
 
+    ; Call strdup to create a copy of the hash string
+    mov rdi, rsi
+    extern strdup
+    call strdup
+    test rax, rax
+    je .malloc_fail
+    
+    ; Save the duplicated string
+    mov rsi, rax
+
+    ; Now allocate memory for the node
     mov rdi, 32       ; tamaño del nodo: 4 punteros (8*4 = 32 bytes)
     call malloc
     test rax, rax
-    je .malloc_fail
+    je .strdup_fail
 
     ; rax = puntero al nodo
     ; Inicializar campos
     mov qword [rax], NULL         ; next
     mov qword [rax + 8], NULL     ; previous
-    mov byte  [rax + 16], sil     ; type (rsi -> sil)
-    mov qword [rax + 24], rdx     ; hash
+    mov byte  [rax + 16], bl      ; type (rbx -> bl)
+    mov qword [rax + 24], rsi     ; hash (duplicated string)
 
     ; devolver nodo en rax
+    pop rbx
+    pop rbp
+    ret
+
+.strdup_fail:
+    ; Free the duplicated string if node allocation fails
+    mov rdi, rsi
+    call free
+    mov rax, NULL
+    pop rbx
     pop rbp
     ret
 
 .malloc_fail:
     mov rax, NULL
+    pop rbx
     pop rbp
     ret
 
@@ -123,72 +146,76 @@ string_proc_list_add_node_asm:
 string_proc_list_concat_asm:
     push rbp
     mov rbp, rsp
-    push rbx                ; vamos a usar rbx para current_node
-    push r12                ; result
-    push r13                ; temp
-    push r14                ; save list pointer
+    sub rsp, 16               ; Reserve stack space for local variables
+    push rbx                  ; vamos a usar rbx para current_node
+    push r12                  ; result
+    push r13                  ; list pointer
+    push r14                  ; type
+    push r15                  ; hash pointer
 
     ; Validaciones
     test rdi, rdi
-    je .return_null
+    jz .return_null
     test rdx, rdx
-    je .return_null
+    jz .return_null
 
-    ; Save list pointer
-    mov r14, rdi            ; Save list pointer in r14
+    ; Save parameters in non-volatile registers
+    mov r13, rdi              ; Save list pointer in r13
+    mov r14, rsi              ; Save type in r14
+    mov r15, rdx              ; Save hash pointer in r15
 
     ; strdup(hash)
-    mov rdi, rdx
-    extern strdup
+    mov rdi, r15
     call strdup
     test rax, rax
-    je .return_null
-    mov r12, rax            ; r12 = result
+    jz .return_null
+    mov r12, rax              ; r12 = result (duplicated hash)
 
     ; recorrer lista
-    mov rbx, [r14]          ; list->first (use r14 instead of rdi)
+    mov rbx, [r13]            ; list->first
 
 .loop:
     test rbx, rbx
-    je .done
+    jz .done
 
-    mov al, [rbx + 16]      ; node->type (byte)
-    cmp al, sil             ; comparar con type
+    ; Check if node type matches requested type
+    movzx eax, byte [rbx + 16]  ; node->type (zero-extend to avoid garbage)
+    cmp al, r14b                ; compare with type
     jne .next
 
-    ; concatenar result + node->hash
-    mov rdi, r12            ; result
-    mov rsi, [rbx + 24]     ; node->hash
-    test rsi, rsi           ; check if hash is NULL
-    je .next                ; skip if NULL
-    
+    ; Get node hash
+    mov rsi, [rbx + 24]       ; node->hash
+    test rsi, rsi             ; check if hash is NULL
+    jz .next                  ; skip if NULL
+
+    ; Concatenate result + node->hash
+    mov rdi, r12              ; result
     call str_concat
-    test rax, rax           ; Check if str_concat returned NULL
-    je .next                ; Skip if NULL
+    test rax, rax             ; Check if str_concat returned NULL
+    jz .next                  ; Skip if NULL
     
-    ; liberar viejo result
+    ; Free old result and update with new concatenated string
     mov rdi, r12
+    mov r12, rax              ; Save new result before freeing old one
     call free
-    mov r12, rax            ; nuevo result
 
 .next:
-    mov rbx, [rbx]          ; current_node = current_node->next
+    mov rbx, [rbx]            ; current_node = current_node->next
     jmp .loop
 
 .done:
-    mov rax, r12            ; devolver result
-    pop r14
-    pop r13
-    pop r12
-    pop rbx
-    pop rbp
-    ret
+    mov rax, r12              ; Return result
+    jmp .cleanup
 
 .return_null:
     mov rax, NULL
+
+.cleanup:
+    pop r15
     pop r14
     pop r13
     pop r12
     pop rbx
+    add rsp, 16
     pop rbp
     ret
