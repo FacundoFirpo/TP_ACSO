@@ -49,28 +49,48 @@ string_proc_list_create_asm:
 string_proc_node_create_asm:
     push rbp
     mov rbp, rsp
+    push rbx                  ; Save rbx for later use
 
-    mov rdx, rsi      ; guardamos hash en rdx porque lo vamos a necesitar luego
-    mov rsi, rdi      ; guardamos type en rsi
+    ; Save type in rbx
+    mov rbx, rdi
 
-    mov rdi, 32       ; tamaño del nodo: 4 punteros (8*4 = 32 bytes)
-    call malloc
+    ; Duplicate the hash string
+    mov rdi, rsi
+    call strdup               ; Create a copy of the hash string
     test rax, rax
     je .malloc_fail
 
-    ; rax = puntero al nodo
-    ; Inicializar campos
-    mov qword [rax], NULL         ; next
-    mov qword [rax + 8], NULL     ; previous
-    mov byte  [rax + 16], sil     ; type (rsi -> sil)
-    mov qword [rax + 24], rdx     ; hash
+    ; Save duplicated hash in rsi
+    mov rsi, rax
 
-    ; devolver nodo en rax
+    ; Allocate memory for the node
+    mov rdi, 32               ; 4 punteros (8*4 = 32 bytes)
+    call malloc
+    test rax, rax
+    je .strdup_fail
+
+    ; Initialize node fields
+    mov qword [rax], NULL     ; next
+    mov qword [rax + 8], NULL ; previous
+    mov byte [rax + 16], bl   ; type (from rbx)
+    mov qword [rax + 24], rsi ; hash (duplicated string)
+
+    pop rbx
+    pop rbp
+    ret
+
+.strdup_fail:
+    ; Free the duplicated string if node allocation fails
+    mov rdi, rsi
+    call free
+    mov rax, NULL
+    pop rbx
     pop rbp
     ret
 
 .malloc_fail:
     mov rax, NULL
+    pop rbx
     pop rbp
     ret
 
