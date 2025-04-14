@@ -126,6 +126,7 @@ string_proc_list_concat_asm:
     push rbx                ; vamos a usar rbx para current_node
     push r12                ; result
     push r13                ; temp
+    push r14                ; save list pointer
 
     ; Validaciones
     test rdi, rdi
@@ -134,7 +135,7 @@ string_proc_list_concat_asm:
     je .return_null
 
     ; Save list pointer
-    mov r13, rdi            ; Save list pointer in r13
+    mov r14, rdi            ; Save list pointer in r14
 
     ; strdup(hash)
     mov rdi, rdx
@@ -145,7 +146,7 @@ string_proc_list_concat_asm:
     mov r12, rax            ; r12 = result
 
     ; recorrer lista
-    mov rbx, [r13]          ; list->first (use r13 instead of rdi)
+    mov rbx, [r14]          ; list->first (use r14 instead of rdi)
 
 .loop:
     test rbx, rbx
@@ -158,6 +159,9 @@ string_proc_list_concat_asm:
     ; concatenar result + node->hash
     mov rdi, r12            ; result
     mov rsi, [rbx + 24]     ; node->hash
+    test rsi, rsi           ; check if hash is NULL
+    je .next                ; skip if NULL
+    
     call str_concat
     test rax, rax           ; Check if str_concat returned NULL
     je .next                ; Skip if NULL
@@ -173,6 +177,7 @@ string_proc_list_concat_asm:
 
 .done:
     mov rax, r12            ; devolver result
+    pop r14
     pop r13
     pop r12
     pop rbx
@@ -181,6 +186,7 @@ string_proc_list_concat_asm:
 
 .return_null:
     mov rax, NULL
+    pop r14
     pop r13
     pop r12
     pop rbx
