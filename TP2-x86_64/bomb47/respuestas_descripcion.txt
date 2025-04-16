@@ -1,3 +1,6 @@
+Facundo Firpo
+ffirpo@udesa.edu.ar
+
 FASE 1:
 
 1. Análisis del código ensamblador:
@@ -42,6 +45,38 @@ FASE 2:
    - (-4) / 2 = -2
    - -2 == valor3 y además es negativo → ✅
 
+FASE 3:
+
+1. Análisis general:
+- El programa espera una palabra y un número entero ingresados por el usuario, separados por un espacio.
+- Estos valores son procesados con sscanf("%s %d", ...), que extrae la palabra y convierte el string numérico a entero.
+- Luego, la palabra se busca en un archivo (palabras.txt) usando una búsqueda binaria modificada.
+- A medida que se realiza la búsqueda, se lleva un contador de llamadas recursivas.
+- Finalmente, el programa verifica si el número ingresado coincide exactamente con la cantidad de pasos que tomó encontrar la palabra.
+
+2. Condición que deben cumplir la palabra y el número:
+- La palabra debe estar presente en el archivo palabras.txt.
+- El número ingresado debe ser igual a la cantidad de pasos que tarda la función cuenta en encontrar esa palabra mediante búsqueda binaria.
+- Además:
+  - El número no puede ser mayor a 11, aunque sea correcto.
+
+3. Detalles:
+- La búsqueda binaria usa una forma alternativa de calcular el punto medio:
+    mid = (low ^ high) / 2 + (low & high)
+- Cada llamada recursiva incrementa el contador en 1.
+- Si la palabra no se encuentra, no se retorna contador, y se detona la bomba.
+- Si el contador supera 11, también se detona la bomba, aunque la palabra exista.
+
+4. Ejemplo de entrada válida:
+- palabra: abatatar
+- número: 8
+
+Explicación:
+- abatatar está presente en el archivo palabras.txt.
+- Al simular la búsqueda binaria con la misma lógica del programa, se encontró en 8 pasos.
+- 8 ≤ 11 → ✅
+- El input completo "abatatar 8" pasa la validación y no detona la bomba.
+
 FASE 4:
 
 1. Análisis general:
@@ -73,6 +108,33 @@ FASE 4:
 
 FASE SECRETA:
 
-1. Activación:
-    - La FASE 3 puede recibir un tercer input
-    
+0. Activación:
+ - Despues de superar las 4 fases, el programa vuelve a hacer un sscanf del tercer input, esta vez leyendo una tercer palabra
+ - Compara el string con 0x4c714f
+ - El string en esa dirección de memoria es "abrete_sesamo"
+
+1. Análisis general:
+- El programa espera un número entero ingresado por el usuario.
+- Este valor es procesado con la función `strtoq`, que convierte el string numérico en un número entero.
+- El número ingresado se pasa luego a la función `fun7`, que realiza una búsqueda recursiva en un árbol binario.
+- La función `fun7` recorre el árbol hasta encontrar un valor específico. Si el número ingresado cumple con la condición correcta, la función devuelve el valor esperado.
+- Finalmente, si la función retorna el valor 3, la fase es superada. Si no, la bomba se activa llamando a `explode_bomb`.
+
+2. Condición que debe cumplir el número:
+- El número ingresado debe ser un valor válido que, cuando se procese por la función `fun7`, devuelva exactamente `3`.
+- Además:
+  - El número no puede ser mayor a 1000 (0x3e8).
+
+3. Detalles:
+- La función `fun7` realiza una búsqueda recursiva en un árbol binario:
+  - Si el número ingresado es menor que el valor del nodo actual, se recurre al hijo izquierdo.
+  - Si el número es mayor o igual, se recurre al hijo derecho.
+  - La función devuelve `0` cuando el número coincide con un nodo, y realiza una operación matemática sobre el resultado de las búsquedas recursivas.
+- Para que la fase se pase sin detonar la bomba, el número debe ser el que al recorrer el árbol binario devuelva el valor `3` después de pasar por las comparaciones.
+
+4. Ejemplo de entrada válida:
+- Número: 107
+
+Explicación:
+- El número 107 pasa correctamente la validación en el árbol binario al ser procesado por la función `fun7`.
+- Al recorrer el árbol, el número 107 se encuentra en el nodo correcto y la función devuelve el valor esperado `3` → ✅    
