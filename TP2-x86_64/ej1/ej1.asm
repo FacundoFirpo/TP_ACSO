@@ -4,6 +4,9 @@
 %define FALSE 0
 
 section .data
+err_list:     db "Error: No se pudo crear la lista", 10, 0
+err_node:     db "Error: No se pudo crear el nodo", 10, 0
+err_result:   db "Error: No se pudo asignar memoria para el resultado", 10, 0
 
 section .text
 
@@ -16,202 +19,234 @@ global string_proc_list_concat_asm
 extern malloc
 extern free
 extern str_concat
+extern strdup
+extern fwrite
+extern stderr
 
-
+;-----------------------------------------------------------
+; string_proc_list_create_asm:
+;   Crea la lista. Ante error, escribe un mensaje y devuelve 0.
+;-----------------------------------------------------------
 string_proc_list_create_asm:
-    ; reservar espacio para string_proc_list (dos punteros)
-    push rbp
-    mov rbp, rsp
+    push    rbp
+    mov     rbp, rsp
+    sub     rsp, 16
 
-    mov rdi, 16               ; 2 punteros de 8 bytes = 16 bytes
-    call malloc
-    test rax, rax
-    je .malloc_fail
+    mov     edi, 16         ; tamaño a asignar
+    call    malloc
+    mov     qword [rbp-8], rax
 
-    ; rax contiene el puntero a la estructura
-    mov qword [rax], NULL     ; first = NULL
-    mov qword [rax + 8], NULL ; last = NULL
+    cmp     qword [rbp-8], 0
+    jne     .list_create_success
 
-    mov rax, rax              ; devolver puntero (ya está en rax)
-    pop rbp
+    ; Error en malloc: escribe mensaje de error.
+    mov     rax, [rel stderr]
+    mov     rcx, rax
+    mov     edx, 33         ; longitud del mensaje (sin contar el terminador)
+    mov     esi, 1
+    mov     edi, err_list
+    call    fwrite
+    mov     eax, 0
+    jmp     .exit
+
+.list_create_success:
+    mov     rax, [rbp-8]
+    mov     qword [rax], 0
+    mov     rax, [rbp-8]
+    mov     qword [rax+8], 0
+    mov     rax, [rbp-8]
+
+.exit:
+    leave
     ret
 
-.malloc_fail:
-    ; imprimir mensaje de error (puede omitirse o implementar con extern fprintf si querés)
-    mov rax, NULL
-    pop rbp
-    ret
-
-; argumentos:
-; rdi = type (uint8_t)
-; rsi = hash (char*)
-
+;-----------------------------------------------------------
+; string_proc_node_create_asm:
+;   Crea un nodo con un byte (parámetro en edi) y un puntero
+;   (parámetro en rsi). Devuelve el puntero al nodo.
+;-----------------------------------------------------------
 string_proc_node_create_asm:
-    push rbp
-    mov rbp, rsp
-    push rbx                  ; Save rbx for later use
+    push    rbp
+    mov     rbp, rsp
+    sub     rsp, 32
 
-    ; Save type in rbx
-    mov rbx, rdi
+    mov     eax, edi
+    mov     qword [rbp-32], rsi
+    mov     byte [rbp-20], al
 
-    ; Duplicate the hash string
-    mov rdi, rsi
-    call strdup               ; Create a copy of the hash string
-    test rax, rax
-    je .malloc_fail
+    mov     edi, 32         ; tamaño del nodo
+    call    malloc
+    mov     qword [rbp-8], rax
 
-    ; Save duplicated hash in rsi
-    mov rsi, rax
+    cmp     qword [rbp-8], 0
+    jne     .node_create_success
 
-    ; Allocate memory for the node
-    mov rdi, 32               ; 4 punteros (8*4 = 32 bytes)
-    call malloc
-    test rax, rax
-    je .strdup_fail
+    ; Error en malloc: escribe mensaje de error.
+    mov     rax, [rel stderr]
+    mov     rcx, rax
+    mov     edx, 32
+    mov     esi, 1
+    mov     edi, err_node
+    call    fwrite
+    mov     eax, 0
+    jmp     .exit
 
-    ; Initialize node fields
-    mov qword [rax], NULL     ; next
-    mov qword [rax + 8], NULL ; previous
-    mov byte [rax + 16], bl   ; type (from rbx)
-    mov qword [rax + 24], rsi ; hash (duplicated string)
+.node_create_success:
+    mov     rax, [rbp-8]
+    mov     qword [rax], 0
+    mov     rax, [rbp-8]
+    mov     qword [rax+8], 0
+    mov     rax, [rbp-8]
+    movzx   edx, byte [rbp-20]
+    mov     byte [rax+16], dl
+    mov     rax, [rbp-8]
+    mov     rdx, [rbp-32]
+    mov     qword [rax+24], rdx
+    mov     rax, [rbp-8]
 
-    pop rbx
-    pop rbp
+.exit:
+    leave
     ret
 
-.strdup_fail:
-    ; Free the duplicated string if node allocation fails
-    mov rdi, rsi
-    call free
-    mov rax, NULL
-    pop rbx
-    pop rbp
-    ret
-
-.malloc_fail:
-    mov rax, NULL
-    pop rbx
-    pop rbp
-    ret
-
-; argumentos:
-; rdi = puntero a string_proc_list (list)
-; rsi = type
-; rdx = hash
-
+;-----------------------------------------------------------
+; string_proc_list_add_node_asm:
+;   Agrega un nodo a la lista. Si la lista está vacía, el nodo
+;   se agrega al comienzo. En caso de error, se escribe un mensaje.
+;-----------------------------------------------------------
 string_proc_list_add_node_asm:
-    push rbp
-    mov rbp, rsp
+    push    rbp
+    mov     rbp, rsp
+    sub     rsp, 48
 
-    ; llamar a string_proc_node_create_asm(type, hash)
-    mov r8, rdi        ; guardar list en r8
-    mov rdi, rsi       ; type
-    mov rsi, rdx       ; hash
-    call string_proc_node_create_asm
-    test rax, rax
-    je .end            ; si no se pudo crear nodo, salir
+    mov     qword [rbp-24], rdi    ; puntero a la lista
+    mov     eax, esi             ; primer parámetro (byte)
+    mov     qword [rbp-40], rdx    ; tercer parámetro (puntero)
+    mov     byte [rbp-28], al
+    movzx   eax, byte [rbp-28]
+    mov     rdx, [rbp-40]
+    mov     rsi, rdx
+    mov     edi, eax
+    call    string_proc_node_create_asm
+    mov     qword [rbp-8], rax
 
-    ; rax = nuevo nodo
-    mov r9, rax        ; guardar nodo en r9
+    cmp     qword [rbp-8], 0
+    jne     .add_valid
 
-    mov rax, r8               ; rax = list
-    mov rcx, [rax]            ; list->first
-    test rcx, rcx
-    je .list_empty
+    ; Error al crear el nodo: escribe mensaje.
+    mov     rax, [rel stderr]
+    mov     rcx, rax
+    mov     edx, 32
+    mov     esi, 1
+    mov     edi, err_node
+    call    fwrite
+    jmp     .exit
 
-    ; lista no está vacía
-    mov rdx, [rax + 8]        ; list->last
-    mov [rdx], r9             ; last->next = node
-    mov [r9 + 8], rdx         ; node->previous = last
-    mov [rax + 8], r9         ; list->last = node
-    jmp .end
+.add_valid:
+    mov     rax, [rbp-24]
+    mov     rax, [rax]          ; primer nodo de la lista
+    test    rax, rax
+    jne     .add_append
+    mov     rax, [rbp-24]
+    mov     rdx, [rbp-8]
+    mov     qword [rax], rdx
+    mov     rax, [rbp-24]
+    mov     rdx, [rbp-8]
+    mov     qword [rax+8], rdx
+    jmp     .exit
 
-.list_empty:
-    ; lista vacía: list->first = node; list->last = node
-    mov [rax], r9             ; list->first = node
-    mov [rax + 8], r9         ; list->last = node
+.add_append:
+    mov     rax, [rbp-24]
+    mov     rax, [rax+8]
+    mov     rdx, [rbp-8]
+    mov     qword [rax], rdx
+    mov     rax, [rbp-24]
+    mov     rdx, [rax+8]
+    mov     rax, [rbp-8]
+    mov     qword [rax+8], rdx
+    mov     rax, [rbp-24]
+    mov     rdx, [rbp-8]
+    mov     qword [rax+8], rdx
 
-.end:
-    pop rbp
+.exit:
+    leave
     ret
 
-; argumentos:
-; rdi = list
-; rsi = type
-; rdx = hash
-
+;-----------------------------------------------------------
+; string_proc_list_concat_asm:
+;   Concatena las cadenas de los nodos de la lista que cumplan
+;   una condición (criterio en esi). Se duplica la cadena hash 
+;   (puntero en rdx). En caso de error, se escribe un mensaje.
+;-----------------------------------------------------------
 string_proc_list_concat_asm:
-    push rbp
-    mov rbp, rsp
-    push rbx                ; vamos a usar rbx para current_node
-    push r12                ; result
-    push r13                ; list pointer
-    push r14                ; type
+    push    rbp
+    mov     rbp, rsp
+    sub     rsp, 64
 
-    ; Validaciones
-    test rdi, rdi
-    je .return_null
-    test rdx, rdx
-    je .return_null
+    mov     qword [rbp-40], rdi     ; puntero al primer nodo de la lista
+    mov     eax, esi              ; criterio (byte)
+    mov     qword [rbp-56], rdx     ; puntero a la cadena hash
+    mov     byte [rbp-44], al
 
-    ; Save parameters in non-volatile registers
-    mov r13, rdi              ; Save list pointer in r13
-    mov r14, rsi              ; Save type in r14
+    cmp     qword [rbp-40], 0
+    je      .concat_null
+    cmp     qword [rbp-56], 0
+    jne     .concat_duplicate
 
-    ; strdup(hash)
-    mov rdi, rdx
-    extern strdup
-    call strdup
-    test rax, rax
-    je .return_null
-    mov r12, rax              ; r12 = result (duplicated hash)
+.concat_null:
+    mov     eax, 0
+    jmp     .exit
 
-    ; recorrer lista
-    mov rbx, [r13]            ; list->first
+.concat_duplicate:
+    mov     rax, [rbp-56]
+    mov     rdi, rax
+    call    strdup
+    mov     qword [rbp-8], rax
+    cmp     qword [rbp-8], 0
+    jne     .concat_dup_ok
 
-.loop:
-    test rbx, rbx
-    je .done
+    mov     rax, [rel stderr]
+    mov     rcx, rax
+    mov     edx, 52
+    mov     esi, 1
+    mov     edi, err_result
+    call    fwrite
+    mov     eax, 0
+    jmp     .exit
 
-    ; Check if node type matches requested type
-    movzx eax, byte [rbx + 16]  ; node->type (zero-extend to avoid garbage)
-    cmp al, r14b                ; compare with type
-    jne .next
+.concat_dup_ok:
+    mov     rax, [rbp-40]
+    mov     rax, [rax]
+    mov     qword [rbp-16], rax
+    jmp     .concat_loop
 
-    ; Get node hash
-    mov rsi, [rbx + 24]       ; node->hash
-    test rsi, rsi             ; check if hash is NULL
-    je .next                  ; skip if NULL
+.concat_process:
+    mov     rax, [rbp-16]
+    movzx   eax, byte [rax+16]
+    cmp     byte [rbp-44], al
+    jne     .concat_next
+    mov     rax, [rbp-16]
+    mov     rdx, [rax+24]
+    mov     rax, [rbp-8]
+    mov     rsi, rdx
+    mov     rdi, rax
+    call    str_concat
+    mov     qword [rbp-24], rax
+    mov     rax, [rbp-8]
+    mov     rdi, rax
+    call    free
+    mov     rax, [rbp-24]
+    mov     qword [rbp-8], rax
 
-    ; Concatenate result + node->hash
-    mov rdi, r12              ; result
-    call str_concat
-    test rax, rax             ; Check if str_concat returned NULL
-    je .next                  ; Skip if NULL
-    
-    ; Free old result and update with new concatenated string
-    mov rdi, r12
-    mov r12, rax              ; Save new result before freeing old one
-    call free
+.concat_next:
+    mov     rax, [rbp-16]
+    mov     rax, [rax]
+    mov     qword [rbp-16], rax
 
-.next:
-    mov rbx, [rbx]            ; current_node = current_node->next
-    jmp .loop
+.concat_loop:
+    cmp     qword [rbp-16], 0
+    jne     .concat_process
+    mov     rax, [rbp-8]
 
-.done:
-    mov rax, r12              ; Return result
-    pop r14
-    pop r13
-    pop r12
-    pop rbx
-    pop rbp
-    ret
-
-.return_null:
-    mov rax, NULL
-    pop r14
-    pop r13
-    pop r12
-    pop rbx
-    pop rbp
+.exit:
+    leave
     ret
