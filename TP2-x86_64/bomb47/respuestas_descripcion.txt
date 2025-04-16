@@ -1,0 +1,78 @@
+FASE 1:
+
+1. Análisis del código ensamblador:
+   - Se carga una cadena esperada en el registro `rsi` desde la dirección `0x4c9a58`.
+   - Se llama a la función `strings_not_equal` con la entrada del usuario y la cadena esperada.
+   - Si las cadenas NO son iguales, se llama a `explode_bomb` y la bomba explota.
+
+2. Determinación de la cadena esperada:
+   - Usamos una herramienta como `gdb` para inspeccionar el contenido en la dirección `0x4c9a58`.
+   - Comando en gdb:
+     x/s 0x4c9a58
+   - Esto muestra la cadena:
+     "La ingratitud es hija de la soberbia."
+
+3. Solución:
+   - Ingresar "La ingratitud es hija de la soberbia." como respuesta a la fase 1
+
+
+FASE 2:
+
+1. Análisis general:
+   - El programa espera 3 números enteros ingresados por el usuario.
+   - Convierte los 3 strings a enteros con `strtoq`.
+   - Luego verifica que se cumpla una condición específica entre ellos.
+
+2. Condición que deben cumplir los 3 números:
+   ((valor1 XOR valor2) / 2) == valor3
+   Y además:
+   valor3 < 0
+
+3. Detalles:
+   - La división es aritmética entera (con signo).
+   - El XOR es bit a bit.
+
+4. Ejemplo de entrada válida:
+   - valor1 = 2
+   - valor2 = -2
+   - valor3 = -2
+
+   Explicación:
+   - (2 XOR -2) = -4
+   - (-4) / 2 = -2
+   - -2 == valor3 y además es negativo → ✅
+
+FASE 4:
+
+1. Análisis general:
+   - El programa espera una cadena de caracteres de 6 caracteres ingresados por el usuario.
+   - Cada carácter se convierte a un índice entre 0 y 15 usando la operación `AND 0xf` en su valor ASCII.
+   - Luego, estos índices se usan para acceder a los valores en el array `array.0`, y se calcula la suma de esos valores.
+
+2. Condición que deben cumplir los índices:
+   - Los 6 índices generados a partir de la cadena deben sumar exactamente 60.
+
+3. Detalles:
+   - El array `array.0` tiene los siguientes valores:
+     ```
+     array.0 = [
+         2, 13, 7, 14,
+         5, 10, 6, 15,
+         1, 12, 3, 4,
+         11, 8, 16, 9
+     ]
+     ```
+   - Los índices se generan aplicando `AND 0xf` al valor ASCII de cada carácter de la cadena.
+   - La suma de los valores correspondientes en `array.0` para los índices generados debe ser igual a 60.
+
+4. Ejemplo de entrada válida:
+   - Entrada: "  !!#." (con dos espacios al principio)
+   - Los índices generados son: [0, 0, 1, 1, 3, 2]
+   - La suma es: 2 + 2 + 13 + 13 + 14 + 7 = 60
+   - Como la suma es igual a 60, esta cadena es válida y desactiva la fase 4 de la bomba → ✅
+
+FASE SECRETA:
+
+1. Activación:
+    - La FASE 3 puede recibir un tercer input
+    
