@@ -39,10 +39,23 @@ int inode_iget(struct unixfilesystem *fs, int inumber, struct inode *inp) {
         if (block == 0) return -1;
         return block;
     } else {
-        // Archivos grandes (ILARG): acceso indirecto
-        // No implementado aquí, pero se deja el esqueleto
-        // Se debería leer el bloque indirecto y buscar el bloque físico
-        return -1;
+        // Archivos grandes (ILARG): acceso indirecto simple
+        // Cada entrada en i_addr es un bloque de punteros a bloques de datos
+        int ptrs_per_block = DISKIMG_SECTOR_SIZE / sizeof(unsigned short);
+        int indir_block_index = blockNum / ptrs_per_block;
+        int indir_block_offset = blockNum % ptrs_per_block;
+
+        if (indir_block_index >= 8) return -1;
+        int indir_block_num = inp->i_addr[indir_block_index];
+        if (indir_block_num == 0) return -1;
+
+        unsigned short ptrs[ptrs_per_block];
+        int res = diskimg_readsector(fs->dfd, indir_block_num, ptrs);
+        if (res != DISKIMG_SECTOR_SIZE) return -1;
+
+        int data_block_num = ptrs[indir_block_offset];
+        if (data_block_num == 0) return -1;
+        return data_block_num;
     }
 }
 
