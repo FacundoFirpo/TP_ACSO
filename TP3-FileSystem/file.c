@@ -15,7 +15,7 @@ int file_getblock(struct unixfilesystem *fs, int inumber, int blockNum, void *bu
     }
 
     int diskBlock = inode_indexlookup(fs, &in, blockNum);
-    if (diskBlock <= 0) {
+    if (diskBlock < 0) {
         return -1;
     }
 
