@@ -42,14 +42,14 @@ int inode_iget(struct unixfilesystem *fs, int inumber, struct inode *inp) {
         return block;
     } else {
         // Archivos grandes (ILARG): acceso indirecto simple y doble
-        int simple_limit = 8 * ptrs_per_block;
+        int simple_limit = 7 * ptrs_per_block;
 
         if (blockNum < simple_limit) {
-            // Indirección simple
+            // Indirección simple (i_addr[0] a i_addr[6])
             int indir_block_index = blockNum / ptrs_per_block;
             int indir_block_offset = blockNum % ptrs_per_block;
 
-            if (indir_block_index >= 8) return -1;
+            if (indir_block_index >= 7) return -1;
             int indir_block_num = inp->i_addr[indir_block_index];
             if (indir_block_num == 0) return -1;
 
