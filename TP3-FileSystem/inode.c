@@ -32,6 +32,8 @@ int inode_iget(struct unixfilesystem *fs, int inumber, struct inode *inp) {
     if (!(inp->i_mode & IALLOC)) return -1;
     if (blockNum < 0) return -1;
 
+    int ptrs_per_block = DISKIMG_SECTOR_SIZE / sizeof(unsigned short);
+
     // Archivos pequeños (no ILARG)
     if (!(inp->i_mode & ILARG)) {
         if (blockNum >= 8) return -1;
@@ -39,23 +41,50 @@ int inode_iget(struct unixfilesystem *fs, int inumber, struct inode *inp) {
         if (block == 0) return -1;
         return block;
     } else {
-        // Archivos grandes (ILARG): acceso indirecto simple
-        // Cada entrada en i_addr es un bloque de punteros a bloques de datos
-        int ptrs_per_block = DISKIMG_SECTOR_SIZE / sizeof(unsigned short);
-        int indir_block_index = blockNum / ptrs_per_block;
-        int indir_block_offset = blockNum % ptrs_per_block;
+        // Archivos grandes (ILARG): acceso indirecto simple y doble
+        int simple_limit = 8 * ptrs_per_block;
 
-        if (indir_block_index >= 8) return -1;
-        int indir_block_num = inp->i_addr[indir_block_index];
-        if (indir_block_num == 0) return -1;
+        if (blockNum < simple_limit) {
+            // Indirección simple
+            int indir_block_index = blockNum / ptrs_per_block;
+            int indir_block_offset = blockNum % ptrs_per_block;
 
-        unsigned short ptrs[ptrs_per_block];
-        int res = diskimg_readsector(fs->dfd, indir_block_num, ptrs);
-        if (res != DISKIMG_SECTOR_SIZE) return -1;
+            if (indir_block_index >= 8) return -1;
+            int indir_block_num = inp->i_addr[indir_block_index];
+            if (indir_block_num == 0) return -1;
 
-        int data_block_num = ptrs[indir_block_offset];
-        if (data_block_num == 0) return -1;
-        return data_block_num;
+            unsigned short ptrs[ptrs_per_block];
+            int res = diskimg_readsector(fs->dfd, indir_block_num, ptrs);
+            if (res != DISKIMG_SECTOR_SIZE) return -1;
+
+            int data_block_num = ptrs[indir_block_offset];
+            if (data_block_num == 0) return -1;
+            return data_block_num;
+        } else {
+            // Indirección doble (i_addr[7])
+            int double_blockNum = blockNum - simple_limit;
+            int indir_block_num = inp->i_addr[7];
+            if (indir_block_num == 0) return -1;
+
+            unsigned short first_level[ptrs_per_block];
+            int res = diskimg_readsector(fs->dfd, indir_block_num, first_level);
+            if (res != DISKIMG_SECTOR_SIZE) return -1;
+
+            int first_index = double_blockNum / ptrs_per_block;
+            int second_index = double_blockNum % ptrs_per_block;
+
+            if (first_index >= ptrs_per_block) return -1;
+            int second_indir_block = first_level[first_index];
+            if (second_indir_block == 0) return -1;
+
+            unsigned short second_level[ptrs_per_block];
+            res = diskimg_readsector(fs->dfd, second_indir_block, second_level);
+            if (res != DISKIMG_SECTOR_SIZE) return -1;
+
+            int data_block_num = second_level[second_index];
+            if (data_block_num == 0) return -1;
+            return data_block_num;
+        }
     }
 }
 
