@@ -24,6 +24,16 @@ int file_getblock(struct unixfilesystem *fs, int inumber, int blockNum, void *bu
         return -1;
     }
 
-    return res;
+    // Calcular el tamaño real de datos válidos en este bloque
+    int filesize = inode_getsize(&in);
+    int offset = blockNum * DISKIMG_SECTOR_SIZE;
+    if (filesize > offset) {
+        int valid_bytes = filesize - offset;
+        if (valid_bytes > DISKIMG_SECTOR_SIZE) valid_bytes = DISKIMG_SECTOR_SIZE;
+        return valid_bytes;
+    } else {
+        // El bloque solicitado está fuera del tamaño del archivo
+        return 0;
+    }
 }
 
