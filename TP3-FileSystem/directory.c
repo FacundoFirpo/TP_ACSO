@@ -17,7 +17,6 @@ int directory_findname(struct unixfilesystem *fs, const char *name,
   }
 
   if (!(dir_inode.i_mode & IALLOC) || ((dir_inode.i_mode & IFMT) != IFDIR)) {
-    // No es un directorio válido
     return -1;
   }
 
@@ -37,9 +36,8 @@ int directory_findname(struct unixfilesystem *fs, const char *name,
 
     for (int i = 0; i < entries_in_block && entry_index < num_entries; i++, entry_index++) {
       if (entries[i].d_inumber == 0)
-        continue; // Entrada vacía
+        continue;
 
-      // Comparar nombre (asegura terminación nula)
       if (strncmp(entries[i].d_name, name, sizeof(entries[i].d_name)) == 0) {
         *dirEnt = entries[i];
         return 0;
