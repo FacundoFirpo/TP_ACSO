@@ -44,12 +44,55 @@ int main() {
     {
         printf("Shell> ");
         
-        fgets(command, sizeof(command), stdin);
+        if (fgets(command, sizeof(command), stdin) == NULL) {
+            break; // Exit loop on EOF
+        }
         command[strcspn(command, "\n")] = '\0';
 
-        // Si el usuario escribe "q", salir del shell
-        if (strcmp(command, "q") == 0) {
+        // Reemplazar tabs por espacios
+        for (int i = 0; command[i]; i++) {
+            if (command[i] == '\t') command[i] = ' ';
+        }
+
+        // Si el usuario escribe "exit", salir del shell
+        if (strcmp(command, "exit") == 0) {
             break;
+        }
+
+        // Validar pipes al inicio, final o dobles
+        char *tmp = command;
+        while (*tmp == ' ') tmp++;
+        if (*tmp == '|') {
+            printf("Syntax error\n");
+            continue;
+        }
+        int len = strlen(command);
+        tmp = command + len - 1;
+        while (tmp > command && *tmp == ' ') tmp--;
+        if (*tmp == '|') {
+            printf("Syntax error\n");
+            continue;
+        }
+        if (strstr(command, "||") != NULL) {
+            printf("Syntax error\n");
+            continue;
+        }
+        // Pipes vacíos (ls | | wc)
+        char *p = command;
+        int last_pipe = 1; // true
+        int empty_pipe = 0;
+        while (*p) {
+            if (*p == '|') {
+                if (last_pipe) empty_pipe = 1;
+                last_pipe = 1;
+            } else if (*p != ' ') {
+                last_pipe = 0;
+            }
+            p++;
+        }
+        if (empty_pipe) {
+            printf("Syntax error\n");
+            continue;
         }
 
         char *token = strtok(command, "|");
@@ -64,6 +107,7 @@ int main() {
         int in_fd = 0; // Entrada estándar al principio
         pid_t pid;
         int i;
+        int too_many_args = 0;
 
         for (i = 0; i < command_count; i++) 
         {
@@ -90,11 +134,16 @@ int main() {
                 }
 
                 // Parsear el comando en argumentos respetando comillas
-                char *argv[64];
+                char *argv[256];
                 parse_args(commands[i], argv);
-
+                int argc = 0;
+                while (argv[argc]) argc++;
+                if (argc > 255) {
+                    printf("Too many arguments\n");
+                    exit(1);
+                }
                 execvp(argv[0], argv);
-                perror("execvp");
+                printf("command not found\n");
                 exit(1);
             } else if (pid < 0) {
                 perror("fork");
