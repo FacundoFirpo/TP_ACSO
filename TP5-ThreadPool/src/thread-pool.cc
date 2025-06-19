@@ -11,7 +11,6 @@ ThreadPool::ThreadPool(size_t numThreads) : wts(numThreads), done(false) {
 
     // Inicializamos dispatcher
     dispatcherSignal = new Semaphore(0);
-    remainingTasks = new Semaphore(0);
     dt = thread([this] { dispatcher(); });
 
     activeTasks = 0;
