@@ -13,6 +13,9 @@ ThreadPool::ThreadPool(size_t numThreads) : wts(numThreads), done(false) {
     dispatcherSignal = new Semaphore(0);
     remainingTasks = new Semaphore(0);
     dt = thread([this] { dispatcher(); });
+
+    activeTasks = 0;
+
 }
 
 void ThreadPool::schedule(const function<void(void)>& thunk) {
@@ -24,8 +27,9 @@ void ThreadPool::schedule(const function<void(void)>& thunk) {
         lock_guard<mutex> lg(queueLock);
         taskQueue.push(thunk);
     }
-    dispatcherSignal->signal();
-    remainingTasks->signal();  // para que wait sepa cuántas tareas hay
+
+    activeTasks++;
+    dispatcherSignal->signal(); // para que wait sepa cuántas tareas hay
 }
 
 void ThreadPool::dispatcher() {
@@ -78,33 +82,21 @@ void ThreadPool::worker(int id) {
 
         thunkCopy();  // ejecutar
 
-        remainingTasks->wait();  // avisar que terminó
+        activeTasks--;
         {
-            lock_guard<mutex> lg(wts[id].lock);
-            wts[id].available = true;
+            lock_guard<mutex> lock(waitLock);
+            if (activeTasks == 0 && taskQueue.empty()) {
+                cv_wait.notify_all();
+            }
         }
     }
 }
 
 void ThreadPool::wait() {
-    while (true) {
-        bool all_done = false;
-        {
-            lock_guard<mutex> lg(queueLock);
-            if (taskQueue.empty()) {
-                all_done = true;
-                for (auto& w : wts) {
-                    lock_guard<mutex> lock(w.lock);
-                    if (!w.available) {
-                        all_done = false;
-                        break;
-                    }
-                }
-            }
-        }
-        if (all_done) break;
-        this_thread::yield();
-    }
+    unique_lock<mutex> lock(waitLock);
+    cv_wait.wait(lock, [this] {
+        return activeTasks == 0 && taskQueue.empty();
+    });
 }
 
 ThreadPool::~ThreadPool() {
@@ -117,6 +109,5 @@ ThreadPool::~ThreadPool() {
     for (auto& w : wts) w.ts.join();
 
     delete dispatcherSignal;
-    delete remainingTasks;
     for (auto& w : wts) delete w.ready;
 }
