@@ -18,6 +18,8 @@ ThreadPool::ThreadPool(size_t numThreads) : wts(numThreads), done(false) {
 void ThreadPool::schedule(const function<void(void)>& thunk) {
     if (!thunk) throw invalid_argument("Cannot schedule nullptr function.");
 
+    if (done) throw runtime_error("Cannot schedule task after destruction.");
+
     {
         lock_guard<mutex> lg(queueLock);
         taskQueue.push(thunk);
