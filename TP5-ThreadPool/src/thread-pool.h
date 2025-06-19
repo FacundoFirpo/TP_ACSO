@@ -14,6 +14,7 @@
 #include <functional>  // for the function template used in the schedule signature
 #include <thread>      // for thread
 #include <vector>      // for vector
+#include <queue>       // for queue
 #include "Semaphore.h" // for Semaphore
 
 using namespace std;
