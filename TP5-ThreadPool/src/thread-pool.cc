@@ -82,10 +82,16 @@ void ThreadPool::worker(int id) {
 
         thunkCopy();  // ejecutar
 
-        activeTasks--;
+        {
+            lock_guard<mutex> lg(wts[id].lock);
+            wts[id].available = true;
+        }
+
+        int remaining = --activeTasks;
+
         {
             lock_guard<mutex> lock(waitLock);
-            if (activeTasks == 0 && taskQueue.empty()) {
+            if (remaining == 0 && taskQueue.empty()) {
                 cv_wait.notify_all();
             }
         }
