@@ -3,7 +3,7 @@
 
 ThreadPool::ThreadPool(size_t numThreads) : wts(numThreads), done(false) {
     // Inicializamos workers
-    for (int i = 0; i < numThreads; ++i) {
+    for (size_t i = 0; i < numThreads; ++i){
         wts[i].available = true;
         wts[i].ready = new Semaphore(0);
         wts[i].ts = thread([this, i] { worker(i); });
@@ -60,9 +60,6 @@ void ThreadPool::dispatcher() {
             }
             wts[workerId].ready->signal();
         }
-
-    NEXT_TASK:
-        continue;
     }
 }
 
