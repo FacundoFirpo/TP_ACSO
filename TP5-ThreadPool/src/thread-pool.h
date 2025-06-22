@@ -76,7 +76,7 @@ class ThreadPool {
     thread dt;                               // dispatcher thread handle
     vector<worker_t> wts;                    // worker thread handles
     bool done;                               // flag to indicate the pool is being destroyed
-    mutex queueLock;                         // mutex to protect the queue of tasks
+    // mutex queueLock;                         // mutex to protect the queue of tasks
     condition_variable cv_wait;
     mutex waitLock;
     atomic<int> activeTasks;

@@ -22,14 +22,14 @@ void ThreadPool::schedule(const function<void(void)>& thunk) {
     if (done) throw runtime_error("Cannot schedule task after destruction.");
 
     {
-        lock_guard<mutex> lock(waitLock);  // 🔒 proteger modificación en paralelo con wait()
-        lock_guard<mutex> lg(queueLock);
+        lock_guard<mutex> lock(waitLock);  // 🔒 único lock para proteger ambos
         taskQueue.push(thunk);
-        activeTasks++;  // 👈 asegurar atomicidad con condición del wait
+        activeTasks++;
     }
 
     dispatcherSignal->signal();
 }
+
 
 
 void ThreadPool::dispatcher() {
@@ -83,17 +83,16 @@ void ThreadPool::worker(int id) {
         thunkCopy();  // ejecutar
 
         {
-            lock_guard<mutex> lg(wts[id].lock);
-            wts[id].available = true;
+        lock_guard<mutex> lg(wts[id].lock);
+        wts[id].available = true;
         }
 
-        int remaining = --activeTasks;
-
         {
-            lock_guard<mutex> lock(waitLock);
-            if (remaining == 0 && taskQueue.empty()) {
-                cv_wait.notify_all();
-            }
+        lock_guard<mutex> lock(waitLock);  // 🔒 proteger ambos
+        activeTasks--;
+        if (activeTasks == 0 && taskQueue.empty()) {
+            cv_wait.notify_all();
+        }
         }
     }
 }
