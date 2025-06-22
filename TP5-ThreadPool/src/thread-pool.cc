@@ -1,14 +1,14 @@
 #include "thread-pool.h"
 
 ThreadPool::ThreadPool(size_t numThreads) : wts(numThreads), done(false), tasksInFlight(0) {
-    // Inicializamos workers
+    // workers
     for (size_t i = 0; i < numThreads; ++i) {
         wts[i].available = true;
         wts[i].ready = new Semaphore(0);
         wts[i].ts = thread([this, i] { worker(i); });
     }
 
-    // Inicializamos dispatcher
+    // dispatcher
     dispatcherSignal = new Semaphore(0);
     dt = thread([this] { dispatcher(); });
 }

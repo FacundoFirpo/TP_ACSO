@@ -88,7 +88,7 @@ class ThreadPool {
 
 
     /* It is incomplete, there should be more private variables to manage the structures... 
-    * *
+    * * 
     */
   
     /* ThreadPools are the type of thing that shouldn't be cloneable, since it's
