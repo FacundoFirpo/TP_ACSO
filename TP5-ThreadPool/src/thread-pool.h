@@ -73,19 +73,19 @@ class ThreadPool {
     private:
     void worker(int id);
     void dispatcher();
-    thread dt;                               // dispatcher thread handle
-    vector<worker_t> wts;                    // worker thread handles
-    // Estructuras compartidas
-    queue<function<void(void)>> taskQueue;
-    Semaphore* dispatcherSignal;
 
-    // Control general
-    bool done;
+    thread dt;                          // dispatcher thread
+    vector<worker_t> wts;               // workers
 
-    // 🔒 Sincronización principal
-    mutex taskLock;                     // protege taskQueue y tasksInFlight
-    condition_variable cv_task;        // para wait()
-    int tasksInFlight = 0;             // cuenta tareas activas o pendientes
+    queue<function<void(void)>> taskQueue;  // cola de tareas
+    Semaphore* dispatcherSignal;             
+
+    bool done;                         // indica que el pool está cerrándose
+
+    mutex queueLock;                  // protege taskQueue y tasksInFlight
+    condition_variable cv_wait;       // para wait()
+    int tasksInFlight = 0;            // número de tareas en cola o ejecutándose
+
 
     /* It is incomplete, there should be more private variables to manage the structures... 
     * *
