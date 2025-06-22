@@ -76,16 +76,17 @@ class ThreadPool {
     thread dt;                               // dispatcher thread handle
     vector<worker_t> wts;                    // worker thread handles
     bool done;                               // flag to indicate the pool is being destroyed
-    // mutex queueLock;                         // mutex to protect the queue of tasks
-    condition_variable cv_wait;
-    mutex waitLock;
-    atomic<int> activeTasks;
-    atomic<int> schedulingInProgress;
+    // Estructuras compartidas
+    queue<function<void(void)>> taskQueue;
+    Semaphore* dispatcherSignal;
 
+    // Control general
+    bool done;
 
-    queue<function<void(void)>> taskQueue;   // cola de tareas
-    Semaphore* dispatcherSignal;             // semáforo para notificar dispatcher
-    Semaphore* remainingTasks;               // tareas pendientes
+    // 🔒 Sincronización principal
+    mutex taskLock;                     // protege taskQueue y tasksInFlight
+    condition_variable cv_task;        // para wait()
+    int tasksInFlight = 0;             // cuenta tareas activas o pendientes
 
     /* It is incomplete, there should be more private variables to manage the structures... 
     * *

@@ -13,8 +13,7 @@ ThreadPool::ThreadPool(size_t numThreads) : wts(numThreads), done(false) {
     dispatcherSignal = new Semaphore(0);
     dt = thread([this] { dispatcher(); });
 
-    activeTasks = 0;
-    schedulingInProgress = 0;
+    tasksInFlight = 0;
 
 }
 
@@ -22,18 +21,15 @@ void ThreadPool::schedule(const function<void(void)>& thunk) {
     if (!thunk) throw invalid_argument("Cannot schedule nullptr function.");
     if (done) throw runtime_error("Cannot schedule task after destruction.");
 
-    schedulingInProgress++;  // señalamos que entra un hilo a schedule
-
     {
-        lock_guard<mutex> lock(waitLock);
+        lock_guard<mutex> lock(taskLock);
         taskQueue.push(thunk);
-        activeTasks++;
-        cv_wait.notify_all();  
+        tasksInFlight++;
     }
 
-    schedulingInProgress--;  // señalamos que terminó de schedulear
     dispatcherSignal->signal();
 }
+
 
 
 
@@ -90,26 +86,28 @@ void ThreadPool::worker(int id) {
         thunkCopy();  // ejecutar
 
         {
-        lock_guard<mutex> lg(wts[id].lock);
-        wts[id].available = true;
+            lock_guard<mutex> lg(wts[id].lock);
+            wts[id].available = true;
         }
 
         {
-        lock_guard<mutex> lock(waitLock);  // 🔒 proteger ambos
-        activeTasks--;
-        if (activeTasks == 0 && taskQueue.empty()) {
-            cv_wait.notify_all();
+            lock_guard<mutex> lock(taskLock);
+            tasksInFlight--;
+            if (tasksInFlight == 0) {
+                cv_task.notify_all();
+            }
         }
-        }
+
     }
 }
 
 void ThreadPool::wait() {
-    unique_lock<mutex> lock(waitLock);
-    cv_wait.wait(lock, [this] {
-        return activeTasks == 0 && taskQueue.empty() && schedulingInProgress == 0;
+    unique_lock<mutex> lock(taskLock);
+    cv_task.wait(lock, [this] {
+        return tasksInFlight == 0;
     });
 }
+
 
 ThreadPool::~ThreadPool() {
     wait();
