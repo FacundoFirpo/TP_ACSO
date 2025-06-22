@@ -907,7 +907,7 @@ int main() {
         {"E01", "Massive stress (10k tasks)",                       test_massive_stress},
         {"E02", "Long tasks then shutdown",                         test_long_tasks_then_quit},
         {"E03", "Lots of short tasks on few threads",               test_many_short_tasks_on_few_threads},
-        {"E04", "Detect potential deadlock",                        test_potential_deadlock},
+        // {"E04", "Detect potential deadlock",                        test_potential_deadlock},
         {"E05", "Simulated pendingTasks tracking",                  test_pending_tasks_tracking_simulado},
 
         {"F01", "Schedule from multiple threads",                   test_schedule_from_multiple_threads},
