@@ -14,6 +14,7 @@ ThreadPool::ThreadPool(size_t numThreads) : wts(numThreads), done(false) {
     dt = thread([this] { dispatcher(); });
 
     activeTasks = 0;
+    schedulingInProgress = 0;
 
 }
 
@@ -21,12 +22,15 @@ void ThreadPool::schedule(const function<void(void)>& thunk) {
     if (!thunk) throw invalid_argument("Cannot schedule nullptr function.");
     if (done) throw runtime_error("Cannot schedule task after destruction.");
 
+    schedulingInProgress++;  // señalamos que entra un hilo a schedule
+
     {
-        lock_guard<mutex> lock(waitLock);  // 🔒 único lock para proteger ambos
+        lock_guard<mutex> lock(waitLock);
         taskQueue.push(thunk);
         activeTasks++;
     }
 
+    schedulingInProgress--;  // señalamos que terminó de schedulear
     dispatcherSignal->signal();
 }
 
@@ -102,7 +106,7 @@ void ThreadPool::worker(int id) {
 void ThreadPool::wait() {
     unique_lock<mutex> lock(waitLock);
     cv_wait.wait(lock, [this] {
-        return activeTasks == 0 && taskQueue.empty();
+    return activeTasks == 0 && taskQueue.empty() && schedulingInProgress == 0;
     });
 }
 

@@ -80,6 +80,7 @@ class ThreadPool {
     condition_variable cv_wait;
     mutex waitLock;
     atomic<int> activeTasks;
+    atomic<int> schedulingInProgress;
 
 
     queue<function<void(void)>> taskQueue;   // cola de tareas
