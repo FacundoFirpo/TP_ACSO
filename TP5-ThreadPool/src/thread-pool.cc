@@ -55,17 +55,19 @@ void ThreadPool::dispatcher() {
         if (workerId != -1) {
             function<void(void)> thunk;
             {
-                lock_guard<mutex> lg(queueLock);
-                if (taskQueue.empty()) continue;  // doble check por race
+                lock_guard<mutex> lock(waitLock);  // ✅ usar el mismo lock que en schedule()
+                if (taskQueue.empty()) continue;   // double-check
                 thunk = taskQueue.front();
                 taskQueue.pop();
             }
+
             {
                 lock_guard<mutex> lock(wts[workerId].lock);
                 wts[workerId].thunk = thunk;
             }
             wts[workerId].ready->signal();
         }
+
     }
 }
 
