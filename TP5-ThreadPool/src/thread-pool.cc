@@ -1,6 +1,10 @@
 #include "thread-pool.h"
 
-ThreadPool::ThreadPool(size_t numThreads) : wts(numThreads), done(false), tasksInFlight(0) {
+/*
+Inicializo ThreadPool con un numero de workers, cada worker tiene su propio thread,
+y un semaphore para que el dispatcher pueda avisarle cuando tiene trabajo
+*/
+ThreadPool::ThreadPool(size_t numThreads) : wts(numThreads), done(false), activeTasks(0) {
     // workers
     for (size_t i = 0; i < numThreads; ++i) {
         wts[i].available = true;
@@ -13,6 +17,9 @@ ThreadPool::ThreadPool(size_t numThreads) : wts(numThreads), done(false), tasksI
     dt = thread([this] { dispatcher(); });
 }
 
+/*
+Pushea tareas y le avisa al dispatcher
+*/
 void ThreadPool::schedule(const function<void(void)>& thunk) {
     if (!thunk) throw invalid_argument("Cannot schedule nullptr function.");
     if (done) throw runtime_error("Cannot schedule task after destruction.");
@@ -20,12 +27,16 @@ void ThreadPool::schedule(const function<void(void)>& thunk) {
     {
         lock_guard<mutex> lock(queueLock);
         taskQueue.push(thunk);
-        tasksInFlight++;
+        activeTasks++;
     }
 
     dispatcherSignal->signal();
 }
 
+/*
+Asigna una tarea a un worker disponible
+Si no hay workers disponibles, espera a que uno se libere
+*/
 void ThreadPool::dispatcher() {
     while (true) {
         dispatcherSignal->wait();
@@ -33,6 +44,7 @@ void ThreadPool::dispatcher() {
         if (done) break;
 
         int workerId = -1;
+        // Busca un worker disponible
         while (workerId == -1 && !done) {
             for (size_t i = 0; i < wts.size(); ++i) {
                 unique_lock<mutex> lock(wts[i].lock);
@@ -42,14 +54,16 @@ void ThreadPool::dispatcher() {
                     break;
                 }
             }
-            if (workerId == -1) this_thread::yield();
+            if (workerId == -1) this_thread::yield(); // no hay workers disponibles entonces espera
         }
 
+
+        // Si encontramos un worker disponible, le asignamos una tarea
         if (workerId != -1) {
             function<void(void)> thunk;
             {
                 lock_guard<mutex> lock(queueLock);
-                if (taskQueue.empty()) continue; // doble check para race
+                if (taskQueue.empty()) continue;
                 thunk = taskQueue.front();
                 taskQueue.pop();
             }
@@ -62,9 +76,12 @@ void ThreadPool::dispatcher() {
     }
 }
 
+/*
+Ejecuta las tareas
+*/
 void ThreadPool::worker(int id) {
     while (true) {
-        wts[id].ready->wait();
+        wts[id].ready->wait(); // espera una tarea
         if (done) break;
 
         function<void(void)> thunkCopy;
@@ -73,30 +90,37 @@ void ThreadPool::worker(int id) {
             thunkCopy = wts[id].thunk;
         }
 
-        thunkCopy();
+        thunkCopy(); // ejecuta la tarea
 
         {
             lock_guard<mutex> lock(wts[id].lock);
-            wts[id].available = true;
+            wts[id].available = true; // vuelve a estar disponible
         }
 
+        // actualiza el número de tareas activas
         {
             lock_guard<mutex> lock(queueLock);
-            tasksInFlight--;
-            if (tasksInFlight == 0) {
+            activeTasks--;
+            if (activeTasks == 0) {
                 cv_wait.notify_all();
             }
         }
     }
 }
 
+/*
+Bloquea hasta que todas las tareas hayan sido ejecutadas
+*/
 void ThreadPool::wait() {
     unique_lock<mutex> lock(queueLock);
     cv_wait.wait(lock, [this] {
-        return tasksInFlight == 0;
+        return activeTasks == 0;
     });
 }
 
+/*
+Cuando termina, libera todo
+*/
 ThreadPool::~ThreadPool() {
     wait();
     done = true;

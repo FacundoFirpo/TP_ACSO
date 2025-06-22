@@ -84,7 +84,7 @@ class ThreadPool {
 
     mutex queueLock;                  // protege taskQueue y tasksInFlight
     condition_variable cv_wait;       // para wait()
-    int tasksInFlight = 0;            // número de tareas en cola o ejecutándose
+    int activeTasks = 0;            // número de tareas en cola o ejecutándose
 
 
     /* It is incomplete, there should be more private variables to manage the structures... 
