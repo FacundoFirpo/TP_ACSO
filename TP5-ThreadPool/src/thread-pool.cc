@@ -28,6 +28,7 @@ void ThreadPool::schedule(const function<void(void)>& thunk) {
         lock_guard<mutex> lock(waitLock);
         taskQueue.push(thunk);
         activeTasks++;
+        cv_wait.notify_all();  
     }
 
     schedulingInProgress--;  // señalamos que terminó de schedulear
@@ -106,7 +107,7 @@ void ThreadPool::worker(int id) {
 void ThreadPool::wait() {
     unique_lock<mutex> lock(waitLock);
     cv_wait.wait(lock, [this] {
-    return activeTasks == 0 && taskQueue.empty() && schedulingInProgress == 0;
+        return activeTasks == 0 && taskQueue.empty() && schedulingInProgress == 0;
     });
 }
 
