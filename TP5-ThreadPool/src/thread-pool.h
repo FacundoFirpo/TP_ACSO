@@ -75,7 +75,6 @@ class ThreadPool {
     void dispatcher();
     thread dt;                               // dispatcher thread handle
     vector<worker_t> wts;                    // worker thread handles
-    bool done;                               // flag to indicate the pool is being destroyed
     // Estructuras compartidas
     queue<function<void(void)>> taskQueue;
     Semaphore* dispatcherSignal;

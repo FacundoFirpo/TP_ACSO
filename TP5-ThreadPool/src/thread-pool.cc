@@ -56,9 +56,9 @@ void ThreadPool::dispatcher() {
         if (workerId != -1) {
             function<void(void)> thunk;
             {
-                lock_guard<mutex> lock(waitLock);  // ✅ usar el mismo lock que en schedule()
+                lock_guard<mutex> lock(taskLock);  
                 if (taskQueue.empty()) continue;   // double-check
-                thunk = taskQueue.front();
+                    thunk = taskQueue.front();
                 taskQueue.pop();
             }
 
